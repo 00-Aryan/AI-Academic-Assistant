@@ -3,18 +3,32 @@
     <!-- Pinned Resources -->
     <div class="mb-4">
       <h6 class="fw-semibold mb-3 panel-heading" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
-        <i class="bi bi-pin-angle me-2 panel-icon"></i>Pinned resources
+        <i class="bi bi-pin-angle me-2 panel-icon"></i>Pinned resources ({{ pinnedResources.length }})
       </h6>
-      <div class="list-group small">
-        <a href="#" class="list-group-item list-group-item-action border rounded mb-2 panel-item" @click="openResource('CS301 • Lab 2 rubric')" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
-          <i class="bi bi-journal-text me-2 panel-item-icon"></i>CS301 • Lab 2 rubric
+      <div v-if="pinnedResources.length === 0" class="text-muted small text-center py-3">
+        <i class="bi bi-pin-angle text-3xl"></i>
+        <p class="mb-0 mt-2">No pinned resources</p>
+      </div>
+      <div v-else class="list-group small">
+        <a 
+          v-for="res in pinnedResources.slice(0, 3)" 
+          :key="res.id"
+          href="#" 
+          class="list-group-item list-group-item-action border rounded mb-2 panel-item" 
+          @click.prevent="openResource(res)"
+          :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }"
+        >
+          <i :class="getResourceIcon(res.resource_type)" class="me-2 panel-item-icon"></i>
+          {{ res.title }}
         </a>
-        <a href="#" class="list-group-item list-group-item-action border rounded mb-2 panel-item" @click="openResource('Systems • Lecture 5')" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
-          <i class="bi bi-gear-fill me-2 panel-item-icon"></i>Systems • Lecture 5
-        </a>
-        <a href="#" class="list-group-item list-group-item-action border rounded panel-item" @click="openResource('Linear Algebra • Notes')" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
-          <i class="bi bi-book me-2 panel-item-icon"></i>Linear Algebra • Notes
-        </a>
+        <button 
+          v-if="pinnedResources.length > 3"
+          @click="viewPinned"
+          class="btn btn-sm panel-btn border w-100 text-start"
+          :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }"
+        >
+          <i class="bi bi-three-dots me-2"></i>View all ({{ pinnedResources.length }})
+        </button>
       </div>
     </div>
 
@@ -31,7 +45,7 @@
           <i class="bi bi-share me-2 panel-icon"></i>Share to class
         </button>
         <button type="button" class="btn panel-btn border text-start py-2" @click="viewPinned" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
-          <i class="bi bi-pin-angle me-2 panel-icon-success"></i>Pinned resources
+          <i class="bi bi-pin-angle me-2 panel-icon-success"></i>Pinned resources ({{ pinnedResources.length }})
         </button>
       </div>
     </div>
@@ -94,32 +108,49 @@
 import { useThemeStore } from '@/stores/theme'
 
 export default {
+  props: {
+    pinnedResources: {
+      type: Array,
+      default: () => []
+    }
+  },
   setup() {
     const themeStore = useThemeStore()
     return { themeStore }
   },
   methods: {
-    openResource(name) {
-      alert(`Opening resource: ${name}`)
+    openResource(resource) {
+      if (resource.resource_type === 'link') {
+        window.open(resource.url, '_blank')
+      } else {
+        this.$emit('open-resource', resource)
+      }
+    },
+    getResourceIcon(type) {
+      const icons = {
+        document: 'bi bi-file-earmark-text',
+        image: 'bi bi-image',
+        link: 'bi bi-link-45deg',
+        pdf: 'bi bi-file-earmark-pdf',
+      }
+      return icons[type] || 'bi bi-file-earmark'
     },
     viewDeadlines() {
-      const modal = new bootstrap.Modal(document.getElementById('deadlinesModal'))
-      modal.show()
+      // TODO: Implement deadlines modal
+      alert('View deadlines - Coming soon!')
     },
     shareToClass() {
-      const modal = new bootstrap.Modal(document.getElementById('shareModal'))
-      modal.show()
+      // TODO: Implement share modal
+      alert('Share to class - Coming soon!')
     },
     viewPinned() {
-      alert('Viewing all pinned resources ')
+      this.$emit('view-pinned')
     },
     continueStudy(topic) {
       alert(`Resuming: ${topic}`)
     },
     shareNow() {
       alert('Resource shared successfully ')
-      const modal = bootstrap.Modal.getInstance(document.getElementById('shareModal'))
-      modal.hide()
     }
   }
 }

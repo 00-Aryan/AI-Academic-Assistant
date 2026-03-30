@@ -134,7 +134,7 @@ async def send_email_background(recipient_email: str, course_code: str, period: 
 
 # Create FastAPI router
 router = APIRouter(
-    prefix="/ta/doubts",
+    prefix="/doubts",
     tags=["Doubt Summarizer"]
 )
 

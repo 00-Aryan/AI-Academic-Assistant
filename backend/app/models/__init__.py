@@ -11,6 +11,7 @@ from app.models.resource import Resource
 from app.models.announcement import Announcement
 from app.models.profile import Profile
 from app.models.course import Course
+from app.models.user_course import UserCourse
 from app.models.quiz import Quiz
 from app.models.quiz_attempt import QuizAttempt
 from app.models.doubts import DoubtUpload, DoubtMessage
@@ -41,6 +42,7 @@ __all__ = [
     "Profile",
     # Course management models
     "Course",
+    "UserCourse",
     "Quiz",
     "QuizAttempt",
     "DoubtUpload",

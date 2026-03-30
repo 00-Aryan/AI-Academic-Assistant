@@ -44,13 +44,19 @@ class DoubtSummarizerService:
     def __init__(self):
         """Initialize LLM + JSON parser"""
         self.llm = None
-        self.parser = JsonOutputParser(pydantic_object=WeeklySummaryResponse)
+        self.parser = None
+
+        if not LANGCHAIN_AVAILABLE:
+            logger.warning("LangChain not installed. Doubt summarizer will not work.")
+            logger.warning("Install with: pip install langchain langchain-google-genai")
+            return
 
         if not settings.GOOGLE_API_KEY:
             logger.warning("⚠️ Google API Key missing — LLM disabled.")
             return
 
         try:
+            self.parser = JsonOutputParser(pydantic_object=WeeklySummaryResponse)
             self.llm = ChatGoogleGenerativeAI(
                 model=settings.GEMINI_MODEL,
                 google_api_key=settings.GOOGLE_API_KEY,

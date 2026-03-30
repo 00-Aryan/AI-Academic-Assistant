@@ -1,7 +1,15 @@
 import logging
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import PromptTemplate
 from app.core.config import settings
+
+# LangChain imports with fallback
+try:
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_core.prompts import PromptTemplate
+    LANGCHAIN_AVAILABLE = True
+except ImportError:
+    LANGCHAIN_AVAILABLE = False
+    ChatGoogleGenerativeAI = None
+    PromptTemplate = None
 
 # Import the library you have
 try:
@@ -18,6 +26,10 @@ class VideoSummaryService:
         self.llm = None
         # We instantiate the API class because your version seems to require it
         self.yt_api = YouTubeTranscriptApi() if YouTubeTranscriptApi else None
+
+        if not LANGCHAIN_AVAILABLE:
+            logger.warning("LangChain not installed. Video summary will not work.")
+            return
 
         if settings.GOOGLE_API_KEY:
             try:

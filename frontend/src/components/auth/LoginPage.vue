@@ -9,9 +9,9 @@
           <p class="lead">
             Your personalized academic assistant for track, analyze, and enhance your learning journey.
           </p>
-          <p class="small">
-            Designed for IITM BS students.
-          </p>
+          <!-- <p class="small">
+            Empowering students with insights and tools to excel in their academic pursuits.
+          </p> -->
         </div>
       </div>
 
@@ -71,16 +71,16 @@
               {{ loading ? 'Signing in...' : 'Sign in' }}
             </button>
 
-            <p class="text-center text-muted small mb-3">or continue with</p>
+            <!-- <p class="text-center text-muted small mb-3">or continue with</p> -->
 
-            <div class="d-flex justify-content-center gap-2">
+            <!-- <div class="d-flex justify-content-center gap-2">
               <button type="button" class="btn btn-outline-primary rounded-pill w-50" disabled>
                 <i class="bi bi-google me-1"></i> Google
               </button>
               <button type="button" class="btn btn-outline-primary rounded-pill w-50" disabled>
                 <i class="bi bi-facebook me-1"></i> Facebook
               </button>
-            </div>
+            </div> -->
             <p class="text-center text-muted small mt-2">(Social login coming soon)</p>
           </form>
         </div>
@@ -166,7 +166,7 @@ export default {
 <style scoped>
 /* Page background */
 .login-wrapper {
-  background: url('/src/assets/login.jpg') no-repeat center center / cover;
+  background: #9ac6f2;
   height: 100dvh;
   display: flex;
   justify-content: center;
@@ -181,14 +181,14 @@ export default {
   height: 600px; /* fixed height */
   border-radius: 1.5rem;
   overflow: hidden;
-  background: #fff;
+  background: #dcd8d8;
   box-shadow: 0 8px 35px rgba(0, 0, 0, 0.3);
 }
 
 /* Left Section */
 .left-section {
   width: 50%;
-  background: url('/src/assets/background.png') no-repeat center center / cover;
+  background: #182633;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -196,7 +196,7 @@ export default {
 }
 
 .text-content {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgb(255, 255, 255);
   padding: 2rem;
   border-radius: 1rem;
   text-align: center;
@@ -227,6 +227,7 @@ export default {
 .right-section {
   width: 50%;
   display: flex;
+  color: #000000;
   justify-content: center;
   align-items: center;
   padding: 3rem;
@@ -235,13 +236,14 @@ export default {
 .form-content {
   width: 100%;
   max-width: 360px;
+    
 }
 
 /* Buttons */
 .btn-gradient {
   background: linear-gradient(135deg, #1976d2, #004ba0);
   border: none;
-  color: white;
+  color: rgb(255, 255, 255);
   font-size: 1.05rem;
   padding: 0.75rem;
   transition: all 0.3s ease;
@@ -255,13 +257,15 @@ export default {
 /* Inputs */
 input.form-control {
   padding: 0.9rem 1.1rem;
-  border: 1px solid #cfd8dc;
+  border: 1px solid #efc806;
+
   font-size: 1rem;
 }
 
 input.form-control:focus {
   border-color: #1976d2;
   box-shadow: 0 0 10px rgba(25, 118, 210, 0.3);
+
 }
 
 /* Prevent auto shrink on zoom */

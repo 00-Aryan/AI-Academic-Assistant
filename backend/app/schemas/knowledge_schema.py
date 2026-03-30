@@ -44,7 +44,6 @@ class KnowledgeSourceOut(BaseModel):
 
     class Config:
         from_attributes = True
-        orm_mode = True
 
 
 # Knowledge Chunk Schemas
@@ -62,7 +61,6 @@ class KnowledgeChunkOut(BaseModel):
 
     class Config:
         from_attributes = True
-        orm_mode = True
 
 
 class KnowledgeChunkWithSource(KnowledgeChunkOut):
@@ -86,7 +84,6 @@ class TaskOut(BaseModel):
 
     class Config:
         from_attributes = True
-        orm_mode = True
 
 
 # Search Schemas

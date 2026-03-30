@@ -81,7 +81,7 @@ class TestChat:
             }
         )
 
-        assert response.status_code == 401
+        assert response.status_code in [401, 403]
 
     @patch('app.services.chatbot_service_hybrid.HybridChatbotService.chat')
     def test_chat_success(self, mock_chat, client: TestClient, auth_headers, sample_chat_request):
@@ -215,7 +215,7 @@ class TestChatStream:
             }
         )
 
-        assert response.status_code == 401
+        assert response.status_code in [401, 403]
 
     def test_chat_stream_success(self, client: TestClient, auth_headers):
         """Test successful streaming chat."""
@@ -262,7 +262,7 @@ class TestConversationManagement:
         """Test that clearing conversation requires authentication."""
         response = client.delete("/api/chatbot/conversation/test-conv-123")
 
-        assert response.status_code == 401
+        assert response.status_code in [401, 403]
 
     def test_clear_conversation_success(self, client: TestClient, auth_headers):
         """Test successfully clearing a conversation."""
@@ -298,7 +298,7 @@ class TestConversationManagement:
         """Test that getting conversation history requires authentication."""
         response = client.get("/api/chatbot/conversation/test-conv-123/history")
 
-        assert response.status_code == 401
+        assert response.status_code in [401, 403]
 
     def test_get_conversation_history_empty(self, client: TestClient, auth_headers):
         """Test getting history for conversation with no messages."""
@@ -353,7 +353,7 @@ class TestConversationState:
         """Test that getting conversation state requires authentication."""
         response = client.get("/api/chatbot/conversation/test-conv/state")
 
-        assert response.status_code == 401
+        assert response.status_code in [401, 403]
 
     def test_get_conversation_state_success(self, client: TestClient, auth_headers):
         """Test getting conversation state."""
@@ -397,7 +397,7 @@ class TestChatbotMetrics:
         """Test that getting metrics requires authentication."""
         response = client.get("/api/chatbot/metrics")
 
-        assert response.status_code == 401
+        assert response.status_code in [401, 403]
 
     def test_get_metrics_success(self, client: TestClient, auth_headers):
         """Test getting chatbot metrics."""

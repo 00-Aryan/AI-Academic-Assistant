@@ -12,10 +12,9 @@ class UserSimpleResponse(BaseModel):
     id: int
     email: str
 
+    
     class Config:
-        orm_mode = True
-
-
+        from_attributes = True
 class CourseBase(BaseModel):
     """Base schema for a course with common attributes."""
     name: str = Field(..., min_length=3, max_length=100, example="Introduction to Machine Learning")

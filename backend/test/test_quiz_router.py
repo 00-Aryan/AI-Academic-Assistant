@@ -155,12 +155,10 @@ def test_submit_quiz_attempt_correct(
     client: TestClient, auth_headers: dict, test_quiz: Quiz, db_session: Session
 ):
     """Tests submitting a quiz attempt with all correct answers."""
-    attempt_data = {
-        "answers": [
-            {"question_index": 0, "selected_options": ["A programming language"]},
-            {"question_index": 1, "selected_options": ["str", "int", "list"]},
-        ]
-    }
+    attempt_data = [
+        {"question_index": 0, "selected_options": ["A programming language"]},
+        {"question_index": 1, "selected_options": ["str", "int", "list"]},
+    ]
     response = client.post(
         f"/api/quizzes/{test_quiz.id}/attempt", headers=auth_headers, json=attempt_data
     )
@@ -176,19 +174,17 @@ def test_submit_quiz_attempt_partially_correct(
     client: TestClient, auth_headers: dict, test_quiz: Quiz
 ):
     """Tests submitting a quiz attempt with one correct and one incorrect answer."""
-    attempt_data = {
-        "answers": [
-            {"question_index": 0, "selected_options": ["A programming language"]}, # Correct
-            {"question_index": 1, "selected_options": ["str", "int"]}, # Incorrect (incomplete)
-        ]
-    }
+    attempt_data = [
+        {"question_index": 0, "selected_options": ["A programming language"]},  # Correct
+        {"question_index": 1, "selected_options": ["str", "int"]},  # Incorrect (incomplete)
+    ]
     response = client.post(
         f"/api/quizzes/{test_quiz.id}/attempt", headers=auth_headers, json=attempt_data
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["score"] == 5  # Only marks for the first question
+    assert data["score"] == 5  # Only marks for the first question, second is incorrect
     assert data["total_marks"] == 15
 
 

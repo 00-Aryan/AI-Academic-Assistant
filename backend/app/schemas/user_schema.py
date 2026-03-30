@@ -7,7 +7,7 @@ registration, and profile management.
 
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from enum import Enum
 
 
@@ -37,13 +37,15 @@ class UserCreate(BaseModel):
                   - At least one digit
         role: User role (student, ta, instructor, admin)
         full_name: User's full name (optional during registration)
+        course_ids: List of course IDs (required for TA/Instructor, ignored for students)
 
     Example:
         {
-            "email": "student@example.com",
+            "email": "ta@example.com",
             "password": "SecurePass123",
-            "role": "student",
-            "full_name": "John Doe"
+            "role": "ta",
+            "full_name": "Jane Smith",
+            "course_ids": [1, 3, 5]
         }
     """
     email: EmailStr = Field(..., description="Valid email address")
@@ -62,6 +64,10 @@ class UserCreate(BaseModel):
         min_length=2,
         max_length=100,
         description="User's full name"
+    )
+    course_ids: Optional[List[int]] = Field(
+        default_factory=list,
+        description="List of course IDs (required for TA/Instructor)"
     )
 
 

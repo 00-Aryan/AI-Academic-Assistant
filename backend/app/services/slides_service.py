@@ -49,12 +49,13 @@ class SlidesService:
     def __init__(self):
         """Initialize the Slides Generation Service."""
         self.llm = None
-        self.parser = StrOutputParser()
+        self.parser = None
 
         if not LANGCHAIN_AVAILABLE:
-            logger.warning("LangChain or related libraries not installed. Slide generation will not work.")
-            logger.warning("Install with: pip install langchain langchain-google-genai")
+            logger.warning("LangChain not installed. Slide generation will be disabled.")
             return
+
+        self.parser = StrOutputParser()
 
         if not settings.GOOGLE_API_KEY:
             logger.warning("GOOGLE_API_KEY not found in .env file. Slide generation will be disabled.")

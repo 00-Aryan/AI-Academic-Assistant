@@ -1,0 +1,122 @@
+{
+  "financial_data": {
+    "revenue_by_region": {
+      "type": "bar",
+      "labels": ["North", "South", "East", "West"],
+      "values": [85000, 92000, 78000, 88000],
+      "context": "Financial - Revenue by Region"
+    },
+    "quarterly_growth": {
+      "type": "line",
+      "labels": ["Q1", "Q2", "Q3", "Q4"],
+      "values": [45000, 52000, 61000, 73000],
+      "context": "Financial - Quarterly Growth Trend"
+    },
+    "market_share": {
+      "type": "pie",
+      "labels": ["Product A", "Product B", "Product C", "Product D"],
+      "values": [35, 28, 22, 15],
+      "context": "Financial - Market Share Distribution"
+    }
+  },
+  "performance_data": {
+    "team_scores": {
+      "type": "bar",
+      "labels": ["Team Alpha", "Team Beta", "Team Gamma", "Team Delta"],
+      "values": [92, 88, 85, 91],
+      "context": "Performance - Team Scores"
+    },
+    "system_metrics": {
+      "type": "line",
+      "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+      "values": [78, 82, 85, 88, 91, 94],
+      "context": "Performance - System Uptime Trend"
+    },
+    "resource_distribution": {
+      "type": "pie",
+      "labels": ["CPU", "Memory", "Disk", "Network"],
+      "values": [28, 35, 22, 15],
+      "context": "Performance - Resource Distribution"
+    }
+  },
+  "demographic_data": {
+    "user_segments": {
+      "type": "bar",
+      "labels": ["18-25", "26-35", "36-45", "46-55", "56-65", "65+"],
+      "values": [2500, 4200, 3800, 2900, 1600, 900],
+      "context": "Demographic - Users by Age Group"
+    },
+    "subscription_growth": {
+      "type": "line",
+      "labels": ["Q1", "Q2", "Q3", "Q4"],
+      "values": [5000, 7500, 11200, 16800],
+      "context": "Demographic - Subscription Growth"
+    },
+    "segment_distribution": {
+      "type": "pie",
+      "labels": ["Premium", "Standard", "Basic", "Free"],
+      "values": [32, 28, 25, 15],
+      "context": "Demographic - User Segment Distribution"
+    }
+  },
+  "sales_data": {
+    "monthly_sales": {
+      "type": "line",
+      "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+      "values": [45000, 48000, 51000, 49000, 56000, 62000, 68000, 71000, 75000, 79000, 82000, 88000],
+      "context": "Sales - Monthly Sales Trend"
+    },
+    "regional_performance": {
+      "type": "bar",
+      "labels": ["North America", "Europe", "Asia", "South America", "Africa"],
+      "values": [250000, 180000, 320000, 95000, 60000],
+      "context": "Sales - Regional Sales Performance"
+    },
+    "product_sales": {
+      "type": "pie",
+      "labels": ["Enterprise", "Professional", "Standard", "Starter"],
+      "values": [42, 28, 22, 8],
+      "context": "Sales - Product Tier Distribution"
+    }
+  },
+  "education_data": {
+    "student_performance": {
+      "type": "bar",
+      "labels": ["Excellent", "Good", "Average", "Below Average", "Poor"],
+      "values": [15, 42, 68, 28, 7],
+      "context": "Education - Student Performance Distribution"
+    },
+    "course_enrollment": {
+      "type": "line",
+      "labels": ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7", "Week 8"],
+      "values": [120, 135, 142, 155, 168, 175, 182, 188],
+      "context": "Education - Course Enrollment Trend"
+    },
+    "department_students": {
+      "type": "pie",
+      "labels": ["Engineering", "Business", "Arts", "Science", "Medicine"],
+      "values": [280, 150, 120, 200, 180],
+      "context": "Education - Students by Department"
+    }
+  },
+  "operational_data": {
+    "production_output": {
+      "type": "line",
+      "labels": ["Q1", "Q2", "Q3", "Q4"],
+      "values": [8500, 9200, 10100, 11800],
+      "context": "Operations - Production Output"
+    },
+    "facility_utilization": {
+      "type": "bar",
+      "labels": ["Plant A", "Plant B", "Plant C", "Plant D"],
+      "values": [92, 87, 78, 85],
+      "context": "Operations - Facility Utilization %"
+    },
+    "error_distribution": {
+      "type": "pie",
+      "labels": ["Critical", "High", "Medium", "Low"],
+      "values": [5, 15, 35, 45],
+      "context": "Operations - Error Severity Distribution"
+    }
+  }
+}

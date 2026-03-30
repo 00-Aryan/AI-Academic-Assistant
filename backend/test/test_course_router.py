@@ -136,6 +136,32 @@ def test_update_course_as_student(
     assert response.status_code == 403  # Forbidden
 
 
+def test_update_course_to_duplicate_name_fails(
+    client: TestClient, admin_auth_headers: dict, db_session: Session, test_course: Course
+):
+    """
+    Tests that updating a course name to an existing name of another course fails.
+    The current implementation will likely raise a 500 error instead of a 409.
+    """
+    # Create a second course
+    course2 = Course(
+        name="Second Course Name", description="Another course.", created_by_id=test_course.created_by_id
+    )
+    db_session.add(course2)
+    db_session.commit()
+
+    # Try to update test_course to have the same name as course2
+    response = client.put(
+        f"/api/courses/{test_course.id}",
+        headers=admin_auth_headers,
+        json={"name": course2.name},
+    )
+
+    # This assertion is expected to fail. The API should return 409, but it will likely return 500.
+    assert response.status_code == 409, f"API returned {response.status_code} instead of 409. Body: {response.text}"
+    assert "course with this name already exists" in response.json()["detail"]
+
+
 def test_delete_course_as_admin(
     client: TestClient, admin_auth_headers: dict, db_session: Session
 ):

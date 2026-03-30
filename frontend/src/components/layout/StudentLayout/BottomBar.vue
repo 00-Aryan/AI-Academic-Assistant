@@ -1,7 +1,7 @@
 <template>
   <footer
-    class="fixed bottom-0 left-[250px] w-[calc(100%-250px-320px)] z-50 px-6 py-4"
-    :style="{ background: 'var(--bg-primary)' }"
+    class="fixed bottom-0 left-[250px] w-[calc(100%-250px-320px)] z-[100] px-6 py-4 border-t"
+    :style="{ background: 'var(--bg-primary)', borderColor: 'var(--border-default)' }"
   >
     <div class="flex items-end justify-center gap-3 w-full max-w-xl mx-auto">
       <!-- Main Input Container -->
@@ -14,12 +14,12 @@
           ref="textareaRef"
           @input="autoResize"
           @keydown.enter.exact.prevent="sendMessage"
-          class="w-full resize-none rounded-2xl px-4 py-2.5 pr-12 focus:ring-2 focus:ring-blue-500/20 transition-all leading-relaxed overflow-hidden"
-          :style="{ 
-            color: 'var(--text-primary)',
-            background: 'var(--input-bg)',
-            border: '1px solid var(--input-border)'
-          }"
+          class="w-full resize-none rounded-2xl px-4 py-2.5 pr-12
+                 leading-relaxed overflow-hidden
+                 bg-[#dbeafe] border border-blue-300 shadow-sm
+                 text-blue-900 placeholder:text-blue-800/60
+                 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500
+                 transition-all"
         ></textarea>
 
         <!-- Send Button (inside input) -->
@@ -27,7 +27,7 @@
           type="button"
           @click="sendMessage"
           class="absolute right-2 bottom-2 p-2 rounded-xl transition-all duration-200 flex items-center justify-center"
-          :class="message.trim() ? 'text-blue-600 hover:bg-blue-50' : 'text-gray-400 cursor-not-allowed'"
+          :class="message.trim() ? 'text-blue-600 hover:bg-blue-50' : 'text-red-400 cursor-not-allowed'"
           :disabled="!message.trim()"
         >
           <PaperAirplaneIcon class="w-5 h-5" />
@@ -43,7 +43,7 @@
         @change="handleFileUpload"
       />
 
-      <!-- Paper Clip (Attach) - Smaller and less prominent -->
+      <!-- Paper Clip (Attach) -->
       <button
         type="button"
         class="p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 flex-shrink-0"
@@ -78,7 +78,7 @@ const attachedFile = ref(null);
 const fileInput = ref(null);
 const textareaRef = ref(null);
 
-const triggerFilePicker = () => fileInput.value.click();
+const triggerFilePicker = () => fileInput.value?.click();
 
 const handleFileUpload = (event) => {
   attachedFile.value = event.target.files[0];
@@ -86,10 +86,11 @@ const handleFileUpload = (event) => {
 
 const removeAttachment = () => {
   attachedFile.value = null;
-  fileInput.value.value = "";
+  if (fileInput.value) fileInput.value.value = "";
 };
 
 const emit = defineEmits(["send"]);
+
 const sendMessage = () => {
   if (!message.value.trim()) return;
   emit("send", { message: message.value, file: attachedFile.value });
@@ -102,8 +103,8 @@ const sendMessage = () => {
 const autoResize = () => {
   const el = textareaRef.value;
   if (!el) return;
-  el.style.height = "auto"; // Reset height
-  el.style.height = el.scrollHeight + "px"; // Expand to fit content
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
 };
 </script>
 
@@ -113,23 +114,10 @@ footer {
   min-height: 56px;
 }
 
+/* Limit textarea growth & keep it smooth */
 textarea {
   max-height: 200px;
   line-height: 1.5;
-  background: var(--input-bg) !important;
-  border: 1px solid var(--input-border) !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
-  color: var(--input-text) !important;
-}
-
-textarea:focus {
-  outline: none;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08), 0 0 0 2px var(--input-focus);
-}
-
-/* Smooth transitions */
-button {
-  transition: all 0.2s ease;
 }
 
 /* Custom scrollbar for textarea */
@@ -142,11 +130,16 @@ textarea::-webkit-scrollbar-track {
 }
 
 textarea::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.2);
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 2px;
 }
 
 textarea::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,0,0,0.3);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Smooth transitions */
+button {
+  transition: all 0.2s ease;
 }
 </style>

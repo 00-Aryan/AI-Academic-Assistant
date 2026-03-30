@@ -90,6 +90,7 @@ class User(Base):
     quizzes_created = relationship("Quiz", back_populates="creator", cascade="all, delete-orphan")
     quiz_attempts = relationship("QuizAttempt", back_populates="user", cascade="all, delete-orphan")
     slide_decks_created = relationship("SlideDeck", back_populates="creator", cascade="all, delete-orphan")
+    assigned_courses = relationship("UserCourse", back_populates="user", cascade="all, delete-orphan")
 
     def set_password(self, password: str) -> None:
         """

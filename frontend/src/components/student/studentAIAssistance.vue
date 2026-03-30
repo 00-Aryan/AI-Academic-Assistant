@@ -169,7 +169,7 @@ const onBottomBarSend = async ({ message, file }) => {
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col ml-56 min-w-0">
       <!-- Mode Selection Header -->
-      <header class="sticky top-0 z-10 px-6 py-3" :style="{ background: 'var(--bg-primary)' }">
+      <header class="sticky top-0 z-10 px-9 py-3" :style="{ background: 'var(--bg-primary)' }">
         <div class="flex items-center justify-between">
           <!-- Conversation Topic Name -->
           <div class="flex items-center gap-3">
@@ -195,8 +195,8 @@ const onBottomBarSend = async ({ message, file }) => {
       <!-- Content -->
       <div class="flex-1 flex overflow-hidden">
         <!-- Central Chat Section -->
-        <section class="flex flex-col flex-1 overflow-hidden">
-          <div ref="chatMessagesContainer" class="flex-1 overflow-y-auto px-2 py-3 space-y-4 mb-20">
+        <section class="flex flex-col flex-1 overflow-hidden relative">
+          <div ref="chatMessagesContainer" class="flex-1 overflow-y-auto px-5 py-3 space-y-4 pb-24">
             <!-- Message Loop -->
             <div class="space-y-3">
               <ChatBubble

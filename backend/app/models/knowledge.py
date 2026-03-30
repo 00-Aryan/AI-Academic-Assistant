@@ -6,9 +6,9 @@ for semantic search using pgvector.
 """
 
 from sqlalchemy import Column, String, Boolean, DateTime, Integer, Text, ForeignKey, Index, Enum
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.db import Base
+from app.models.types import GUID
 from datetime import datetime
 import uuid
 
@@ -30,7 +30,7 @@ class KnowledgeSource(Base):
     """
     __tablename__ = "knowledge_sources"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     title = Column(String, nullable=False, index=True)
     description = Column(Text)
     content = Column(Text, nullable=False)  # Main content to be embedded
@@ -57,8 +57,8 @@ class KnowledgeChunk(Base):
     """
     __tablename__ = "knowledge_chunks"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    source_id = Column(UUID(as_uuid=True), ForeignKey("knowledge_sources.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    source_id = Column(GUID(), ForeignKey("knowledge_sources.id"), nullable=False)
     text = Column(Text, nullable=False)
     index = Column(Integer, nullable=False)  # Position in document
 

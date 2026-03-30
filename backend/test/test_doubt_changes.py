@@ -25,8 +25,8 @@ class MockSession:
         return []
 
 # Simulate the new method signature
-def test_get_recent_messages(db, course_code, limit=100, period=None, source=None):
-    """Test the new signature matches implementation"""
+def _validate_get_recent_messages(db, course_code, limit=100, period=None, source=None):
+    """Validate the new signature matches implementation"""
     now = datetime.utcnow()
     
     # Period filtering logic
@@ -44,11 +44,11 @@ def test_get_recent_messages(db, course_code, limit=100, period=None, source=Non
     
     return []
 
-# Test invocations
+# Validation invocations
 db = MockSession()
-result1 = test_get_recent_messages(db, "CS101")
-result2 = test_get_recent_messages(db, "CS101", period="weekly")
-result3 = test_get_recent_messages(db, "CS101", period="weekly", source="forum")
+result1 = _validate_get_recent_messages(db, "CS101")
+result2 = _validate_get_recent_messages(db, "CS101", period="weekly")
+result3 = _validate_get_recent_messages(db, "CS101", period="weekly", source="forum")
 print(f"  - No filters: {result1}")
 print(f"  - With period: {result2}")
 print(f"  - With period + source: {result3}")

@@ -9,11 +9,11 @@ from datetime import datetime
 from typing import Dict, Any
 
 from sqlalchemy import Column, String, DateTime, Enum, UniqueConstraint, Index, JSON
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.db import Base
+from app.models.types import GUID
 from app.models.enums import CallStatusEnum
 
 
@@ -26,7 +26,7 @@ class Call(Base):
     """
     __tablename__ = "calls"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     caller_number = Column(String(50), nullable=True)  # From Twilio "From"
     twilio_sid = Column(String(100), unique=True, nullable=False)  # Unique Twilio call SID
     language = Column(String(10), nullable=True)  # Detected language

@@ -10,12 +10,12 @@
             <p class="lead fw-medium mb-3 text-dark">
               Explore personalized learning tools and study smarter with AURA.
             </p>
-            <p class="small text-dark">AI-powered tools built for IITM BS students.</p>
+            <!-- <p class="small text-dark">AI-powered tools built for IITM BS students.</p> -->
           </div>
         </div>
 
         <!-- Right Side -->
-        <div class="col-lg-6 col-md-7 form-section d-flex flex-column justify-content-center align-items-center" :style="{ background: 'var(--color-bg-card)', borderLeft: '1px solid var(--color-border)' }">
+        <div class="col-lg-6 col-md-7 form-section d-flex flex-column justify-content-center align-items-center" :style="{ background: '#dcd8d8', borderLeft: '1px solid var(--color-border)' }">
           <div class="form-container p-4 p-md-5 w-100" style="max-width: 420px;">
             <div class="text-end mb-3">
               <small class="text-muted">
@@ -78,12 +78,44 @@
                 />
               </div>
               <div class="mb-4">
-                <select class="form-select rounded-pill fs-6" v-model="role" required>
+                <select class="form-select rounded-pill fs-6" v-model="role" @change="onRoleChange" required>
                   <option value="" disabled selected>Select your role</option>
                   <option value="student">Student</option>
                   <option value="ta">Teaching Assistant (TA)</option>
                   <option value="instructor">Instructor</option>
                 </select>
+              </div>
+
+              <!-- Course Selection (visible only for TA/Instructor) -->
+              <div v-if="role === 'ta' || role === 'instructor'" class="mb-4">
+                <label class="form-label fw-semibold mb-2">Select Courses</label>
+                <div class="border rounded-3 p-3" style="max-height: 200px; overflow-y: auto; background: #f8f9fa;">
+                  <div v-if="loadingCourses" class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                    <p class="text-muted mt-2 small">Loading courses...</p>
+                  </div>
+                  <div v-else-if="courses.length === 0" class="text-center py-3">
+                    <p class="text-muted small">No courses available</p>
+                  </div>
+                  <div v-else class="space-y-2">
+                    <div v-for="course in courses" :key="course.id" class="form-check">
+                      <input
+                        type="checkbox"
+                        :id="`course-${course.id}`"
+                        class="form-check-input"
+                        :value="course.id"
+                        v-model="selectedCourses"
+                      />
+                      <label :for="`course-${course.id}`" class="form-check-label">
+                        {{ course.name }}
+                        <small v-if="course.description" class="text-muted d-block">{{ course.description }}</small>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <small v-if="role === 'ta' || role === 'instructor'" class="text-danger d-block mt-2">
+                  <strong>Required:</strong> Select at least one course
+                </small>
               </div>
 
               <button
@@ -103,9 +135,10 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { getAllCourses } from '@/api/courses'
 
 export default {
   name: 'RegisterPage',
@@ -121,6 +154,44 @@ export default {
     const loading = ref(false)
     const errorMessage = ref('')
     const successMessage = ref('')
+    const courses = ref([])
+    const selectedCourses = ref([])
+    const loadingCourses = ref(false)
+
+    // Load courses when component mounts
+    onMounted(async () => {
+      try {
+        loadingCourses.value = true
+        const response = await getAllCourses()
+        courses.value = Array.isArray(response) ? response : response.courses || []
+      } catch (error) {
+        console.error('Failed to load courses:', error)
+        courses.value = []
+      } finally {
+        loadingCourses.value = false
+      }
+    })
+
+    // Load courses when role changes to TA/Instructor
+    const onRoleChange = async () => {
+      if (role.value === 'ta' || role.value === 'instructor') {
+        if (courses.value.length === 0 && !loadingCourses.value) {
+          try {
+            loadingCourses.value = true
+            const response = await getAllCourses()
+            courses.value = Array.isArray(response) ? response : response.courses || []
+          } catch (error) {
+            console.error('Failed to load courses:', error)
+            errorMessage.value = 'Failed to load courses. Please try again.'
+          } finally {
+            loadingCourses.value = false
+          }
+        }
+        selectedCourses.value = []
+      } else {
+        selectedCourses.value = []
+      }
+    }
 
     const handleRegister = async () => {
       // Clear previous messages
@@ -143,6 +214,12 @@ export default {
         return
       }
 
+      // Validate course selection for TA/Instructor
+      if ((role.value === 'ta' || role.value === 'instructor') && selectedCourses.value.length === 0) {
+        errorMessage.value = `Please select at least one course for ${role.value} role`
+        return
+      }
+
       loading.value = true
 
       try {
@@ -151,7 +228,8 @@ export default {
           email.value,
           password.value,
           role.value,
-          fullName.value
+          fullName.value,
+          selectedCourses.value
         )
 
         if (result.success) {
@@ -190,6 +268,10 @@ export default {
       loading,
       errorMessage,
       successMessage,
+      courses,
+      selectedCourses,
+      loadingCourses,
+      onRoleChange,
       handleRegister
     }
   }
@@ -198,7 +280,7 @@ export default {
 
 <style scoped>
 .signup-wrapper {
-  background: url('/src/assets/login.jpg') no-repeat center center / cover;
+  background: #9ac6f2;
   min-height: 100dvh; /* adjusts better with zoom and browser bars */
   width: 100%;
   overflow: hidden;
@@ -207,13 +289,13 @@ export default {
 .big-card {
   width: 90%;
   max-width: 1100px;
-  background: white;
+  background: rgb(255, 255, 255);
   border-radius: 1.5rem;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
 }
 
 .left-section {
-  background: url('/src/assets/background.png') no-repeat center center / cover;
+  background: #182633;
   min-height: 60dvh;
   display: flex;
   align-items: center;

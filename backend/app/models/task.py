@@ -6,9 +6,9 @@ like embedding generation, query processing, etc.
 """
 
 from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Index
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.db import Base
+from app.models.types import GUID
 from datetime import datetime
 import uuid
 from app.models.enums import TaskTypeEnum, TaskStatusEnum
@@ -22,10 +22,10 @@ class Task(Base):
     """
     __tablename__ = "tasks"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     task_type = Column(String, nullable=False)  # TaskTypeEnum value
     status = Column(String, nullable=False, default=TaskStatusEnum.PENDING.value)  # TaskStatusEnum value
-    source_id = Column(UUID(as_uuid=True), ForeignKey("knowledge_sources.id"), nullable=True)
+    source_id = Column(GUID(), ForeignKey("knowledge_sources.id"), nullable=True)
     metadata_ = Column(Text)  # JSON string for additional task data
     error_message = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)

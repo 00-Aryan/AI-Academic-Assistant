@@ -21,9 +21,23 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from main import app
 from app.core.db import Base, get_db
+
+# Import ALL models to register them with Base before create_all
 from app.models.user import User
 from app.models.profile import Profile
 from app.models.course import Course
+from app.models.knowledge import KnowledgeSource, KnowledgeChunk
+from app.models.task import Task
+from app.models.query import Query, QueryResponse
+from app.models.chat_session import ChatSession
+from app.models.call import Call
+from app.models.doubts import DoubtUpload, DoubtMessage
+from app.models.quiz import Quiz
+from app.models.slide_deck import SlideDeck
+from app.models.resource import Resource
+from app.models.tag import Tag
+from app.models.announcement import Announcement
+
 from app.core.security import create_tokens
 
 
@@ -209,67 +223,71 @@ def authenticated_admin(create_test_user, test_admin_data) -> User:
 # ============================================================================
 
 @pytest.fixture
-def user_token(authenticated_user: User) -> Dict:
-    """Generate JWT tokens for test user."""
-    return create_tokens(
+def user_token(authenticated_user: User) -> str:
+    """Generate JWT access token for test user."""
+    tokens = create_tokens(
         user_id=authenticated_user.id,
         email=authenticated_user.email,
         role=authenticated_user.role
     )
+    return tokens["access_token"]
 
 
 @pytest.fixture
-def ta_token(authenticated_ta: User) -> Dict:
-    """Generate JWT tokens for TA user."""
-    return create_tokens(
+def ta_token(authenticated_ta: User) -> str:
+    """Generate JWT access token for TA user."""
+    tokens = create_tokens(
         user_id=authenticated_ta.id,
         email=authenticated_ta.email,
         role=authenticated_ta.role
     )
+    return tokens["access_token"]
 
 
 @pytest.fixture
-def instructor_token(authenticated_instructor: User) -> Dict:
-    """Generate JWT tokens for instructor user."""
-    return create_tokens(
+def instructor_token(authenticated_instructor: User) -> str:
+    """Generate JWT access token for instructor user."""
+    tokens = create_tokens(
         user_id=authenticated_instructor.id,
         email=authenticated_instructor.email,
         role=authenticated_instructor.role
     )
+    return tokens["access_token"]
 
 
 @pytest.fixture
-def admin_token(authenticated_admin: User) -> Dict:
-    """Generate JWT tokens for admin user."""
-    return create_tokens(
+def admin_token(authenticated_admin: User) -> str:
+    """Generate JWT access token for admin user."""
+    tokens = create_tokens(
         user_id=authenticated_admin.id,
         email=authenticated_admin.email,
         role=authenticated_admin.role
     )
+    return tokens["access_token"]
 
 
 @pytest.fixture
-def auth_headers(user_token: Dict) -> Dict:
+def auth_headers(user_token: str) -> Dict:
     """Create authorization headers with user token."""
-    return {"Authorization": f"Bearer {user_token['access_token']}"}
+    return {"Authorization": f"Bearer {user_token}"}
 
 
 @pytest.fixture
-def ta_auth_headers(ta_token: Dict) -> Dict:
+def ta_auth_headers(ta_token: str) -> Dict:
     """Create authorization headers with TA token."""
-    return {"Authorization": f"Bearer {ta_token['access_token']}"}
+    return {"Authorization": f"Bearer {ta_token}"}
 
 
 @pytest.fixture
-def instructor_auth_headers(instructor_token: Dict) -> Dict:
+def instructor_auth_headers(instructor_token: str) -> Dict:
     """Create authorization headers with instructor token."""
-    return {"Authorization": f"Bearer {instructor_token['access_token']}"}
+    return {"Authorization": f"Bearer {instructor_token}"}
 
 
 @pytest.fixture
-def admin_auth_headers(admin_token: Dict) -> Dict:
+def admin_auth_headers(admin_token: str) -> Dict:
     """Create authorization headers with admin token."""
-    return {"Authorization": f"Bearer {admin_token['access_token']}"}
+    return {"Authorization": f"Bearer {admin_token}"}
 
 
 # ============================================================================

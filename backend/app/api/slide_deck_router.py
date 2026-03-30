@@ -4,6 +4,7 @@ API router for slide deck generation and management.
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
@@ -15,6 +16,8 @@ from app.schemas.slide_deck_schema import (
 )
 from app.api.dependencies import require_ta, require_authenticated
 from app.services.slide_deck_service import slide_deck_service
+from app.services.pptx_export_service import export_to_pptx
+from app.services.pdf_export_service import export_to_pdf
 
 router = APIRouter()
 
@@ -173,3 +176,89 @@ def delete_slide_deck(deck_id: int, db: Session = Depends(get_db), current_user:
     db.delete(db_deck)
     db.commit()
     return
+
+
+@router.get("/{deck_id}/export", summary="Export a slide deck to PPTX or PDF (Creator only)")
+def export_slide_deck(
+    deck_id: int,
+    format: str = Query("pptx", description="Export format: 'pptx' or 'pdf'"),
+    theme: str = Query("professional", description="Theme: 'professional', 'modern', 'colorful', 'dark', or 'minimalist'"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_ta),
+):
+    """
+    Exports a slide deck to PPTX or PDF format with professional styling.
+    Only the original creator can perform this action.
+    
+    Available themes:
+    - professional: Navy blue and white, Calibri font
+    - modern: Bright blue and light gray, Arial font
+    - colorful: Red and peach, Georgia/Verdana fonts
+    - dark: Yellow on dark gray, Segoe UI font
+    - minimalist: Black and white, Arial font
+    """
+    # Fetch the deck
+    db_deck = db.query(SlideDeck).filter(SlideDeck.id == deck_id).first()
+    if not db_deck:
+        raise HTTPException(status_code=404, detail="Slide deck not found")
+    
+    # Check authorization
+    if db_deck.created_by_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only export slide decks you have created.")
+
+    # Validate format
+    if format not in ["pptx", "pdf"]:
+        raise HTTPException(status_code=400, detail="Invalid export format. Use 'pptx' or 'pdf'.")
+    
+    # Validate theme
+    valid_themes = ["professional", "modern", "colorful", "dark", "minimalist"]
+    if theme not in valid_themes:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid theme. Choose from: {', '.join(valid_themes)}"
+        )
+    
+    # Prepare slide data
+    slides_data = []
+    for slide in db_deck.slides:
+        slides_data.append({
+            'title': slide['title'],
+            'content': slide['content'],
+            'graph_image': slide.get('graph_image')
+        })
+    
+    # Generate the file
+    try:
+        if format == "pptx":
+            file_buffer = export_to_pptx(
+                deck_title=db_deck.title,
+                deck_description=db_deck.description,
+                slides=slides_data,
+                theme=theme
+            )
+            media_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            filename = f"{db_deck.title.replace(' ', '_')}.pptx"
+        else:  # pdf
+            file_buffer = export_to_pdf(
+                deck_title=db_deck.title,
+                deck_description=db_deck.description,
+                slides=slides_data,
+                theme=theme
+            )
+            media_type = "application/pdf"
+            filename = f"{db_deck.title.replace(' ', '_')}.pdf"
+        
+        # Return as streaming response
+        return StreamingResponse(
+            file_buffer,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate {format.upper()} file: {str(e)}"
+        )

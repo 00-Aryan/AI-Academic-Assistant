@@ -105,7 +105,7 @@
                 @click.stop="editDeck(deck.id)"
                 class="flex-1 px-3 py-2 bg-amber-100 text-amber-700 font-semibold rounded-lg hover:bg-amber-200 transition text-sm"
               >
-                ✏️ Edit
+                ✏️ Preview
               </button>
               <button
                 @click.stop="deleteDeck(deck.id)"
@@ -269,7 +269,11 @@ function viewDeck(id) {
 }
 
 function editDeck(id) {
-  router.push(`/${props.role}/slide-deck/${id}/edit`)
+  // Redirect to preview page to edit the deck
+  router.push({
+    name: props.role === 'ta' ? 'TaSlideDeckPreview' : 'InstructorSlideDeckPreview',
+    params: { deckId: id }
+  })
 }
 
 async function deleteDeck(id) {

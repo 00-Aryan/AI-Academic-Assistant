@@ -15,17 +15,17 @@
 
       <div class="d-flex align-items-center">
         <!-- Ask AI button -->
-        <button class="btn btn-outline-primary rounded-pill me-3 px-3 py-1 d-flex align-items-center hover-shadow">
+        <!-- <button class="btn btn-outline-primary rounded-pill me-3 px-3 py-1 d-flex align-items-center hover-shadow">
           <i class="bi bi-stars me-2"></i> Ask AI
-        </button>
+        </button> -->
 
         <!-- Notification -->
-        <button class="btn btn-light border rounded-circle p-2 me-3 position-relative hover-shadow">
+        <!-- <button class="btn btn-light border rounded-circle p-2 me-3 position-relative hover-shadow">
           <i class="bi bi-bell-fill"></i>
           <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
             3
           </span>
-        </button>
+        </button> -->
 
         <!-- Profile dropdown -->
         <div class="dropdown">

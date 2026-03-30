@@ -17,6 +17,8 @@ from app.core.db import get_db
 from app.core.security import create_tokens, decode_token
 from app.models.user import User
 from app.models.profile import Profile
+from app.models.course import Course
+from app.models.user_course import UserCourse
 from app.schemas.user_schema import (
     UserCreate,
     UserResponse,
@@ -104,6 +106,22 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered. Please use a different email or login."
         )
 
+    # Validate course IDs for TA and Instructor roles
+    if user_data.role in ["ta", "instructor"]:
+        if not user_data.course_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Course IDs are required for {user_data.role} role"
+            )
+        
+        # Verify all course IDs exist
+        courses = db.query(Course).filter(Course.id.in_(user_data.course_ids)).all()
+        if len(courses) != len(user_data.course_ids):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="One or more course IDs are invalid"
+            )
+
     # Create user with role and full name
     user = User(
         email=user_data.email,
@@ -116,6 +134,13 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Assign courses to TA/Instructor
+    if user_data.role in ["ta", "instructor"] and user_data.course_ids:
+        for course_id in user_data.course_ids:
+            user_course = UserCourse(user_id=user.id, course_id=course_id)
+            db.add(user_course)
+        db.commit()
 
     # Create user profile
     profile = Profile(

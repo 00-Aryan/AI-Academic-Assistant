@@ -17,9 +17,9 @@
           <!-- DASHBOARD PAGE -->
           <section v-show="activePage === 'dashboard'" class="space-y-6">
             <!-- Hero -->
-            <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white shadow">
-              <h2 class="text-2xl font-bold mb-1">Welcome back, {{ userName }}! 👋</h2>
-              <p class="opacity-90">Here's what's happening with your academics today.</p>
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 shadow">
+              <h2 class="text-2xl font-bold mb-1" style="color: white !important;">Welcome back, {{ userName }}! 👋</h2>
+              <p class="opacity-90" style="color: white !important;">Here's what's happening with your academics today.</p>
             </div>
 
             <!-- Loading State -->

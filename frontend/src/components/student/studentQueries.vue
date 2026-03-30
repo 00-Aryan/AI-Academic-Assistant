@@ -180,9 +180,16 @@ const sendMessage = async () => {
   if (message.value.trim() === '' && !attachedFile.value) return
   if (!selectedQuery.value) return
 
+  // Validate message length (backend requires min 5 chars)
+  if (message.value.trim().length < 5) {
+    error.value = 'Message must be at least 5 characters long'
+    setTimeout(() => { error.value = null }, 3000)
+    return
+  }
+
   try {
     await queriesAPI.addResponse(selectedQuery.value.id, {
-      content: message.value,
+      content: message.value.trim(),
       is_solution: false
     })
 
@@ -195,6 +202,39 @@ const sendMessage = async () => {
   } catch (err) {
     console.error('Failed to send message:', err)
     error.value = 'Failed to send message. Please try again.'
+  }
+}
+
+const handleBottomBarSend = async (payload) => {
+  if (!selectedQuery.value) {
+    error.value = 'Please select a query first'
+    setTimeout(() => { error.value = null }, 3000)
+    return
+  }
+
+  const messageContent = payload.message?.trim() || ''
+
+  // Validate message length
+  if (messageContent.length < 5) {
+    error.value = 'Message must be at least 5 characters long'
+    setTimeout(() => { error.value = null }, 3000)
+    return
+  }
+
+  try {
+    await queriesAPI.addResponse(selectedQuery.value.id, {
+      content: messageContent,
+      is_solution: false
+    })
+
+    // Reload query to show new response
+    await selectQuery(selectedQuery.value.id)
+    await loadQueries()  // Refresh list
+
+    error.value = null
+  } catch (err) {
+    console.error('Failed to send response:', err)
+    error.value = err.response?.data?.detail || 'Failed to send response. Please try again.'
   }
 }
 
@@ -242,14 +282,14 @@ onMounted(() => {
             </button>
           </div>
 
-          <router-link
+          <!-- <router-link
             to="/student/new-query"
             class="flex items-center gap-2 px-5 py-2 rounded-[18px] bg-blue-600 font-semibold shadow hover:bg-blue-700 transition text-base"
             :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }"
           >
             <PlusCircleIcon class="w-6 h-6" />
             New Query
-          </router-link>
+          </router-link> -->
         </div>
 
         <!-- Loading State -->
@@ -291,48 +331,8 @@ onMounted(() => {
 
         <!-- Grid Layout -->
         <div v-else class="grid grid-cols-12 gap-6">
-          <!-- Left: Recent Queries -->
-          <aside class="col-span-3 overflow-y-auto max-h-[calc(100vh-160px)] pr-1" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
-            <div class="font-bold mb-3 text-lg">
-              Recent queries
-              <span class="text-xs ml-1" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">{{ queries.length }} total</span>
-            </div>
-            <div class="space-y-3">
-              <div
-                v-for="query in recentQueries"
-                :key="query.id"
-                @click="selectQuery(query.id)"
-                :class="[
-                  'rounded-2xl px-4 py-3 shadow border hover:shadow-md cursor-pointer transition',
-                  selectedQuery && selectedQuery.id === query.id ? 'ring-2 ring-blue-500' : ''
-                ]"
-                :style="{ background: 'var(--color-bg-card)', borderColor: 'var(--color-border)' }"
-              >
-                <div class="font-semibold leading-tight line-clamp-2">{{ query.title }}</div>
-                <div class="flex items-center gap-1 text-xs mt-1 mb-1" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
-                  <component :is="getCategoryIcon(query.category)" class="w-4 h-4" />
-                  {{ query.category }} · {{ formatTimeAgo(query.created_at) }}
-                  <span :class="['ml-auto rounded-lg px-2 py-0.5', getStatusColor(query.status)]">
-                    {{ getStatusLabel(query.status) }}
-                  </span>
-                </div>
-                <div class="text-xs line-clamp-2" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
-                  {{ query.description }}
-                </div>
-                <div v-if="query.response_count > 0" class="text-xs mt-1" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
-                  {{ query.response_count }} {{ query.response_count === 1 ? 'reply' : 'replies' }}
-                </div>
-              </div>
-
-              <!-- No queries message -->
-              <div v-if="recentQueries.length === 0" class="text-center py-8 text-sm" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
-                No queries match your filter
-              </div>
-            </div>
-          </aside>
-
-          <!-- Center: Main Thread -->
-          <section class="col-span-5 flex flex-col relative rounded-2xl shadow-lg border overflow-hidden" :style="{ background: 'var(--color-bg-card)', color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
+          <!-- Center: Main Thread (Expanded) -->
+          <section class="col-span-8 flex flex-col relative rounded-2xl shadow-lg border overflow-hidden" :style="{ background: 'var(--color-bg-card)', color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
             <!-- Loading state for detail -->
             <div v-if="isLoadingDetail" class="flex-1 flex items-center justify-center">
               <div class="text-center">
@@ -345,7 +345,7 @@ onMounted(() => {
             <div v-else-if="!selectedQuery" class="flex-1 flex items-center justify-center" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
               <div class="text-center">
                 <ChatBubbleLeftRightIcon class="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p>Select a query to view details</p>
+                <p>Select a query from the right panel to view details</p>
               </div>
             </div>
 
@@ -356,7 +356,7 @@ onMounted(() => {
                 <div class="flex items-center gap-2 text-xs mb-3" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
                   <component :is="getCategoryIcon(selectedQuery.category)" class="w-5 h-5 text-blue-400" />
                   <span class="font-semibold">{{ selectedQuery.category }}</span>
-                  <span class="mx-2 rounded-lg px-2 py-0.5 bg-slate-100" :style="{ color: themeStore.currentTheme === 'dark' ? 'black' : 'black' }">
+                  <span class="mx-2 rounded-lg px-2 py-0.5 bg-slate-100" :style="{ color: 'black' }">
                     {{ selectedQuery.priority }}
                   </span>
                   <span
@@ -385,7 +385,7 @@ onMounted(() => {
 
                 <!-- Messages/Responses -->
                 <div class="space-y-5">
-                  <!-- Original query as first message (rendered with ChatBubble) -->
+                  <!-- Original query as first message -->
                   <ChatBubble
                     v-if="selectedQuery"
                     :message="{ content: selectedQuery.description, timestamp: new Date(selectedQuery.created_at) }"
@@ -393,7 +393,7 @@ onMounted(() => {
                     :isDark="themeStore.currentTheme === 'dark'"
                   />
 
-                  <!-- Responses rendered with ChatBubble for consistent separation -->
+                  <!-- Responses rendered with ChatBubble -->
                   <ChatBubble
                     v-for="response in selectedQuery.responses || []"
                     :key="response.id"
@@ -408,40 +408,34 @@ onMounted(() => {
                   </div>
                 </div>
               </div>
-
-              <!-- Message Input (only for open/in-progress queries) -->
-              <div
-                v-if="selectedQuery.status !== 'RESOLVED'"
-                class="border-t p-4"
-                :style="{ background: 'var(--color-bg-card)', borderColor: 'var(--color-border)' }"
-              >
-                <div class="flex items-center gap-3">
-                  <input
-                    v-model="message"
-                    @keyup.enter="sendMessage"
-                    type="text" 
-                    placeholder="Add a response..."
-                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    @click="sendMessage"
-                    :disabled="!message.trim()"
-                    :class="[
-                      'px-4 py-2 rounded-lg font-semibold transition',
-                      message.trim()
-                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed',
-                    ]"
-                  >
-                    Send
-                  </button>
-                </div>
-              </div>
             </div>
           </section>
 
-          <!-- Right: Filters & Info -->
+          <!-- Right: Recent Queries & Stats -->
           <aside class="col-span-4 overflow-y-auto max-h-[calc(100vh-160px)] space-y-5" :style="{ color: themeStore.currentTheme === 'dark' ? 'white' : 'black' }">
+            <!-- Recent Queries Section -->
+            <div class="rounded-2xl border shadow p-5 flex flex-col gap-3" :style="{ background: 'var(--color-bg-card)', borderColor: 'var(--color-border)' }">
+              <div class="font-bold">Recent Queries</div>
+              <div class="space-y-2 max-h-64 overflow-y-auto">
+                <div
+                  v-for="query in recentQueries"
+                  :key="query.id"
+                  @click="selectQuery(query.id)"
+                  :class="[
+                    'rounded-lg px-3 py-2 text-sm cursor-pointer transition hover:shadow-md border',
+                    selectedQuery && selectedQuery.id === query.id ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+                  ]"
+                  :style="{ borderColor: 'var(--color-border)', background: selectedQuery && selectedQuery.id === query.id ? 'var(--color-bg-section)' : 'transparent' }"
+                >
+                  <div class="font-semibold leading-tight line-clamp-1">{{ query.title }}</div>
+                  <div class="text-xs opacity-70 line-clamp-1">{{ query.description }}</div>
+                  <div class="flex items-center justify-between text-xs mt-1">
+                    <span :class="getStatusColor(query.status)">{{ getStatusLabel(query.status) }}</span>
+                    <span>{{ query.response_count }} {{ query.response_count === 1 ? 'reply' : 'replies' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="rounded-2xl border shadow p-5 flex flex-col gap-3" :style="{ background: 'var(--color-bg-card)', borderColor: 'var(--color-border)' }">
               <div class="font-bold">Quick Stats</div>
               <div class="grid grid-cols-2 gap-3" :style="{ color: 'var(--color-text-primary)' }">
@@ -497,7 +491,7 @@ onMounted(() => {
       </div>
 
       <!-- Bottom Bar -->
-      <BottomBar />
+      <BottomBar @send="handleBottomBarSend" />
     </div>
   </div>
 </template>

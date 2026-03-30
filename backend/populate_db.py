@@ -25,9 +25,19 @@ from app.models.knowledge import KnowledgeSource, KnowledgeChunk
 from app.models.task import Task
 from app.models.query import Query, QueryResponse
 from app.models.chat_session import ChatSession
-from app.models.enums import CategoryEnum, TaskTypeEnum, TaskStatusEnum
+from app.models.doubts import DoubtUpload, DoubtMessage
+from app.models.announcement import Announcement
+from app.models.resource import Resource
+from app.models.quiz import Quiz
+from app.models.quiz_attempt import QuizAttempt
+from app.models.slide_deck import SlideDeck
+from app.models.tag import Tag
+from app.models.call import Call
+from app.models.enums import CategoryEnum, TaskTypeEnum, TaskStatusEnum, CallStatusEnum
 from app.schemas.user_schema import UserRole
 from app.schemas.query_schema import QueryStatus, QueryCategory, QueryPriority
+from app.schemas.announcement_schema import AnnouncementType, AnnouncementTarget
+from app.schemas.resource_schema import ResourceType, ResourceVisibility
 from app.core.security import hash_password
 from datetime import date
 
@@ -51,7 +61,16 @@ def populate_database():
             "knowledge_chunks_created": 0,
             "tasks_created": 0,
             "queries_created": 0,
-            "query_responses_created": 0
+            "query_responses_created": 0,
+            "doubt_uploads_created": 0,
+            "doubt_messages_created": 0,
+            "announcements_created": 0,
+            "resources_created": 0,
+            "quizzes_created": 0,
+            "quiz_attempts_created": 0,
+            "slide_decks_created": 0,
+            "tags_created": 0,
+            "calls_created": 0
         }
 
         # ============================================================
@@ -161,6 +180,36 @@ def populate_database():
                     print(f"  - Profile already exists for: {profile_data['email']}")
 
         # ============================================================
+        # CREATE TAGS (5 entries)
+        # ============================================================
+        print("\nCreating tags...")
+        tags_data = [
+            "Python",
+            "Database",
+            "Algorithms",
+            "Web Development",
+            "Machine Learning",
+        ]
+
+        instructor_for_tags = all_instructors[0] if all_instructors else list(created_users.values())[0]
+        created_tags = []
+        for tag_name in tags_data:
+            existing_tag = db.query(Tag).filter(Tag.name == tag_name).first()
+            if not existing_tag:
+                tag = Tag(
+                    name=tag_name,
+                    created_by_id=instructor_for_tags.id
+                )
+                db.add(tag)
+                db.flush()
+                created_tags.append(tag)
+                result["tags_created"] += 1
+                print(f"  + Created tag: {tag_name}")
+            else:
+                created_tags.append(existing_tag)
+                print(f"  - Tag already exists: {tag_name}")
+
+        # ============================================================
         # CREATE COURSES (10+ entries)
         # ============================================================
         print("\nCreating courses...")
@@ -200,6 +249,169 @@ def populate_database():
             else:
                 created_courses.append(existing_course)
                 print(f"  - Course already exists: {course_data['name']}")
+
+        # ============================================================
+        # ASSIGN COURSES TO USERS
+        # ============================================================
+        print("\nAssigning courses to users...")
+        from app.models.user_course import UserCourse
+        
+        # Assign all students to a subset of courses
+        if all_students and created_courses:
+            for student in all_students:
+                # Each student gets 2-4 random courses
+                num_courses = min(random.randint(2, 4), len(created_courses))
+                assigned_courses = random.sample(created_courses, num_courses)
+                
+                for course in assigned_courses:
+                    existing = db.query(UserCourse).filter(
+                        UserCourse.user_id == student.id,
+                        UserCourse.course_id == course.id
+                    ).first()
+                    
+                    if not existing:
+                        user_course = UserCourse(user_id=student.id, course_id=course.id)
+                        db.add(user_course)
+                        print(f"  + Assigned {student.email} to {course.name}")
+        
+        # TAs are already assigned via signup (if they selected courses)
+        # Instructors are already assigned via signup (if they selected courses)
+
+        # ============================================================
+        # CREATE ANNOUNCEMENTS (5 entries)
+        # ============================================================
+        print("\nCreating announcements...")
+        announcements_data = [
+            {
+                "title": "Midterm Exam Schedule Released",
+                "content": "The midterm exams will be conducted from Dec 15-20. Check your course pages for specific dates and times. Good luck!",
+                "announcement_type": AnnouncementType.DEADLINE,
+                "target_audience": AnnouncementTarget.STUDENTS,
+                "is_pinned": True,
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=20)
+            },
+            {
+                "title": "New AI Course Registration Open",
+                "content": "Registration for the new Artificial Intelligence course is now open. Limited seats available. Register before Dec 10.",
+                "announcement_type": AnnouncementType.GENERAL,
+                "target_audience": AnnouncementTarget.ALL,
+                "is_pinned": False
+            },
+            {
+                "title": "Campus Network Maintenance",
+                "content": "The campus network will undergo maintenance on Dec 5, 2-4 AM. Services may be temporarily unavailable.",
+                "announcement_type": AnnouncementType.URGENT,
+                "target_audience": AnnouncementTarget.ALL,
+                "is_pinned": True,
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=3)
+            },
+            {
+                "title": "TA Office Hours Updated",
+                "content": "TA office hours have been updated for all courses. Check the course pages for new timings.",
+                "announcement_type": AnnouncementType.UPDATE,
+                "target_audience": AnnouncementTarget.STUDENTS,
+                "is_pinned": False
+            },
+            {
+                "title": "Research Paper Submission Deadline",
+                "content": "Reminder: Research paper submissions for the conference are due by Dec 31. Submit via the portal.",
+                "announcement_type": AnnouncementType.DEADLINE,
+                "target_audience": AnnouncementTarget.INSTRUCTORS,
+                "is_pinned": False,
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=30)
+            },
+        ]
+
+        admin_user = created_users.get("admin@test.com")
+        if admin_user:
+            for ann_data in announcements_data:
+                existing = db.query(Announcement).filter(Announcement.title == ann_data["title"]).first()
+                if not existing:
+                    announcement = Announcement(
+                        title=ann_data["title"],
+                        content=ann_data["content"],
+                        announcement_type=ann_data["announcement_type"],
+                        target_audience=ann_data["target_audience"],
+                        created_by_id=admin_user.id,
+                        is_pinned=ann_data.get("is_pinned", False),
+                        expires_at=ann_data.get("expires_at"),
+                        view_count=random.randint(10, 200)
+                    )
+                    db.add(announcement)
+                    result["announcements_created"] += 1
+                    print(f"  + Created announcement: {ann_data['title']}")
+                else:
+                    print(f"  - Announcement already exists: {ann_data['title']}")
+
+        # ============================================================
+        # CREATE RESOURCES (5 entries)
+        # ============================================================
+        print("\nCreating resources...")
+        resources_data = [
+            {
+                "title": "Python Programming Guide",
+                "description": "Comprehensive Python tutorial from basics to advanced",
+                "resource_type": ResourceType.PDF,
+                "url": "https://example.com/python-guide.pdf",
+                "visibility": ResourceVisibility.PUBLIC,
+                "tags": ["Python", "Programming", "Tutorial"]
+            },
+            {
+                "title": "Database Design Video Series",
+                "description": "Complete video series on database design and normalization",
+                "resource_type": ResourceType.VIDEO,
+                "url": "https://youtube.com/playlist?id=db-design",
+                "visibility": ResourceVisibility.PUBLIC,
+                "tags": ["Database", "SQL", "Video"]
+            },
+            {
+                "title": "Data Structures Cheat Sheet",
+                "description": "Quick reference for common data structures and their operations",
+                "resource_type": ResourceType.DOCUMENT,
+                "url": "https://example.com/ds-cheatsheet.pdf",
+                "visibility": ResourceVisibility.PUBLIC,
+                "tags": ["Algorithms", "Data Structures", "Reference"]
+            },
+            {
+                "title": "Web Development Bootcamp",
+                "description": "Full-stack web development course materials",
+                "resource_type": ResourceType.LINK,
+                "url": "https://example.com/web-bootcamp",
+                "visibility": ResourceVisibility.COURSE,
+                "tags": ["Web Development", "Frontend", "Backend"]
+            },
+            {
+                "title": "Machine Learning Research Papers",
+                "description": "Collection of important ML research papers and implementations",
+                "resource_type": ResourceType.LINK,
+                "url": "https://example.com/ml-papers",
+                "visibility": ResourceVisibility.PUBLIC,
+                "tags": ["Machine Learning", "Research", "AI"]
+            },
+        ]
+
+        instructor_user = all_instructors[0] if all_instructors else admin_user
+        if instructor_user:
+            for res_data in resources_data:
+                existing = db.query(Resource).filter(Resource.title == res_data["title"]).first()
+                if not existing:
+                    resource = Resource(
+                        title=res_data["title"],
+                        description=res_data["description"],
+                        resource_type=res_data["resource_type"],
+                        url=res_data["url"],
+                        visibility=res_data["visibility"],
+                        created_by_id=instructor_user.id,
+                        course_id=created_courses[0].id if created_courses and res_data["visibility"] == ResourceVisibility.COURSE else None,
+                        tags=res_data["tags"],
+                        download_count=random.randint(10, 500),
+                        view_count=random.randint(50, 1000)
+                    )
+                    db.add(resource)
+                    result["resources_created"] += 1
+                    print(f"  + Created resource: {res_data['title']}")
+                else:
+                    print(f"  - Resource already exists: {res_data['title']}")
 
         # ============================================================
         # CREATE KNOWLEDGE SOURCES (10+ entries)
@@ -342,6 +554,171 @@ def populate_database():
             else:
                 knowledge_sources.append(existing)
                 print(f"  - Already exists: {data['title']}")
+
+        # ============================================================
+        # CREATE QUIZZES (5 entries)
+        # ============================================================
+        print("\nCreating quizzes...")
+        if created_courses and all_instructors:
+            quizzes_data = [
+                {
+                    "title": "Python Basics Quiz",
+                    "description": "Test your knowledge of Python fundamentals",
+                    "course_id": created_courses[0].id,
+                    "questions": [
+                        {"question": "What is a list in Python?", "options": ["Array", "Mutable sequence", "String", "Dictionary"], "correct_answer": 1},
+                        {"question": "Which keyword is used for function?", "options": ["func", "def", "function", "define"], "correct_answer": 1},
+                    ],
+                    "use_latex": False,
+                    "is_published": True
+                },
+                {
+                    "title": "Database Normalization Quiz",
+                    "description": "Questions on database normalization forms",
+                    "course_id": created_courses[2].id if len(created_courses) > 2 else created_courses[0].id,
+                    "questions": [
+                        {"question": "What is 3NF?", "options": ["Third Normal Form", "Three Node Format", "Triple Nested Function", "Third Null Field"], "correct_answer": 0},
+                    ],
+                    "use_latex": False,
+                    "is_published": True
+                },
+                {
+                    "title": "Algorithms Complexity Quiz",
+                    "description": "Time and space complexity questions",
+                    "course_id": created_courses[1].id if len(created_courses) > 1 else created_courses[0].id,
+                    "questions": [
+                        {"question": "Best case complexity of Quick Sort?", "options": ["O(n)", "O(n log n)", "O(n²)", "O(log n)"], "correct_answer": 1},
+                    ],
+                    "use_latex": True,
+                    "is_published": False
+                },
+                {
+                    "title": "Web Development Fundamentals",
+                    "description": "HTML, CSS, JavaScript basics",
+                    "course_id": created_courses[7].id if len(created_courses) > 7 else created_courses[0].id,
+                    "questions": [
+                        {"question": "Which tag is used for hyperlinks?", "options": ["<link>", "<a>", "<href>", "<url>"], "correct_answer": 1},
+                    ],
+                    "use_latex": False,
+                    "is_published": True
+                },
+                {
+                    "title": "Machine Learning Basics",
+                    "description": "Introduction to ML concepts",
+                    "course_id": created_courses[6].id if len(created_courses) > 6 else created_courses[0].id,
+                    "questions": [
+                        {"question": "What is supervised learning?", "options": ["Learning with labels", "Unsupervised learning", "Reinforcement learning", "None"], "correct_answer": 0},
+                    ],
+                    "use_latex": False,
+                    "is_published": True
+                },
+            ]
+
+            created_quizzes = []
+            for quiz_data in quizzes_data:
+                existing = db.query(Quiz).filter(Quiz.title == quiz_data["title"]).first()
+                if not existing:
+                    quiz = Quiz(
+                        title=quiz_data["title"],
+                        description=quiz_data["description"],
+                        course_id=quiz_data["course_id"],
+                        created_by_id=all_instructors[0].id,
+                        questions=quiz_data["questions"],
+                        use_latex=quiz_data["use_latex"],
+                        is_published=quiz_data["is_published"]
+                    )
+                    db.add(quiz)
+                    db.flush()
+                    created_quizzes.append(quiz)
+                    result["quizzes_created"] += 1
+                    print(f"  + Created quiz: {quiz_data['title']}")
+                else:
+                    created_quizzes.append(existing)
+                    print(f"  - Quiz already exists: {quiz_data['title']}")
+
+            # Create quiz attempts
+            print("\nCreating quiz attempts...")
+            if created_quizzes and all_students:
+                for i, quiz in enumerate(created_quizzes[:3]):
+                    student = all_students[i % len(all_students)]
+                    total_questions = len(quiz.questions)
+                    score = random.randint(50, 100)
+                    attempt = QuizAttempt(
+                        quiz_id=quiz.id,
+                        user_id=student.id,
+                        submitted_answers=[0, 1] if i % 2 == 0 else [1, 0],
+                        score=score,
+                        total_marks=100
+                    )
+                    db.add(attempt)
+                    result["quiz_attempts_created"] += 1
+                    print(f"  + Created quiz attempt for quiz: {quiz.title}")
+
+        # ============================================================
+        # CREATE SLIDE DECKS (5 entries)
+        # ============================================================
+        print("\nCreating slide decks...")
+        if created_courses and all_instructors:
+            slide_decks_data = [
+                {
+                    "title": "Introduction to Python Programming",
+                    "description": "Beginner-friendly Python slides",
+                    "course_id": created_courses[0].id,
+                    "slides": [
+                        {"title": "What is Python?", "content": "# Python\n\nPython is a high-level, interpreted programming language."},
+                        {"title": "Variables and Data Types", "content": "## Variables\n\n```python\nx = 5\nname = 'John'\n```"},
+                    ]
+                },
+                {
+                    "title": "Database Design Principles",
+                    "description": "ER diagrams and normalization",
+                    "course_id": created_courses[2].id if len(created_courses) > 2 else created_courses[0].id,
+                    "slides": [
+                        {"title": "Entity Relationship Model", "content": "# ER Model\n\nEntities, Attributes, Relationships"},
+                    ]
+                },
+                {
+                    "title": "Sorting Algorithms",
+                    "description": "Comparison of sorting techniques",
+                    "course_id": created_courses[1].id if len(created_courses) > 1 else created_courses[0].id,
+                    "slides": [
+                        {"title": "Bubble Sort", "content": "# Bubble Sort\n\nTime: O(n²)"},
+                        {"title": "Quick Sort", "content": "# Quick Sort\n\nTime: O(n log n)"},
+                    ]
+                },
+                {
+                    "title": "Web Development Stack",
+                    "description": "Frontend and backend technologies",
+                    "course_id": created_courses[7].id if len(created_courses) > 7 else created_courses[0].id,
+                    "slides": [
+                        {"title": "Frontend", "content": "# Frontend\n\nHTML, CSS, JavaScript, React"},
+                    ]
+                },
+                {
+                    "title": "Neural Networks Introduction",
+                    "description": "Basic concepts of neural networks",
+                    "course_id": created_courses[6].id if len(created_courses) > 6 else created_courses[0].id,
+                    "slides": [
+                        {"title": "Perceptron", "content": "# Perceptron\n\nSimplest neural network unit"},
+                    ]
+                },
+            ]
+
+            for slide_data in slide_decks_data:
+                existing = db.query(SlideDeck).filter(SlideDeck.title == slide_data["title"]).first()
+                if not existing:
+                    slide_deck = SlideDeck(
+                        title=slide_data["title"],
+                        description=slide_data["description"],
+                        course_id=slide_data["course_id"],
+                        created_by_id=all_instructors[0].id,
+                        slides=slide_data["slides"]
+                    )
+                    db.add(slide_deck)
+                    result["slide_decks_created"] += 1
+                    print(f"  + Created slide deck: {slide_data['title']}")
+                else:
+                    print(f"  - Slide deck already exists: {slide_data['title']}")
 
         # ============================================================
         # CREATE TASKS (10+ entries)
@@ -750,6 +1127,159 @@ def populate_database():
                     print(f"  - Already exists: {data['title']}")
 
         # ============================================================
+        # CREATE DOUBT UPLOADS & MESSAGES (5 entries)
+        # ============================================================
+        print("\nCreating doubt uploads and messages...")
+        if created_courses and all_students and all_tas:
+            doubt_uploads_data = [
+                {
+                    "course_code": "CS101",
+                    "source": "Assignment 1 - Question 3",
+                    "student": all_students[0],
+                    "messages": [
+                        {"role": "student", "text": "I'm stuck on implementing binary search. My code returns wrong indices."},
+                        {"role": "ta", "text": "Check your mid calculation. Use (left + right) // 2. Also verify your boundary conditions."},
+                        {"role": "student", "text": "Thanks! That fixed it. The issue was integer overflow in mid calculation."},
+                    ]
+                },
+                {
+                    "course_code": "CS201",
+                    "source": "Lab 5 - Database Queries",
+                    "student": all_students[1] if len(all_students) > 1 else all_students[0],
+                    "messages": [
+                        {"role": "student", "text": "My JOIN query is returning duplicate rows. How do I fix this?"},
+                        {"role": "ta", "text": "Use DISTINCT keyword or check if you need INNER JOIN instead of CROSS JOIN. Share your query."},
+                    ]
+                },
+                {
+                    "course_code": "CS301",
+                    "source": "Project - Threading Issue",
+                    "student": all_students[2] if len(all_students) > 2 else all_students[0],
+                    "messages": [
+                        {"role": "student", "text": "Getting race condition in my producer-consumer code. Mutex isn't working."},
+                        {"role": "ta", "text": "Make sure you're locking before accessing shared variables and unlocking after. Use condition variables for signaling."},
+                        {"role": "student", "text": "I was unlocking too early. Fixed now!"},
+                    ]
+                },
+                {
+                    "course_code": "CS202",
+                    "source": "Midterm Preparation",
+                    "student": all_students[3] if len(all_students) > 3 else all_students[0],
+                    "messages": [
+                        {"role": "student", "text": "Can you explain the difference between TCP and UDP protocols?"},
+                        {"role": "ta", "text": "TCP is connection-oriented, reliable, ordered. UDP is connectionless, faster, no guarantee. Use TCP for accuracy, UDP for speed."},
+                    ]
+                },
+                {
+                    "course_code": "CS401",
+                    "source": "ML Assignment - Model Overfitting",
+                    "student": all_students[4] if len(all_students) > 4 else all_students[0],
+                    "messages": [
+                        {"role": "student", "text": "My model has 99% training accuracy but only 60% test accuracy. Is it overfitting?"},
+                        {"role": "ta", "text": "Yes, classic overfitting. Try: 1) Add dropout layers, 2) Reduce model complexity, 3) Get more training data, 4) Use regularization."},
+                        {"role": "student", "text": "Added dropout and regularization. Test accuracy improved to 85%!"},
+                    ]
+                },
+            ]
+
+            for doubt_data in doubt_uploads_data:
+                existing = db.query(DoubtUpload).filter(
+                    DoubtUpload.course_code == doubt_data["course_code"],
+                    DoubtUpload.source == doubt_data["source"]
+                ).first()
+
+                if not existing:
+                    doubt_upload = DoubtUpload(
+                        course_code=doubt_data["course_code"],
+                        source=doubt_data["source"],
+                        created_by_id=doubt_data["student"].id,
+                        created_at=datetime.now(timezone.utc) - timedelta(days=random.randint(1, 10))
+                    )
+                    db.add(doubt_upload)
+                    db.flush()
+                    result["doubt_uploads_created"] += 1
+
+                    # Add messages
+                    for msg_data in doubt_data["messages"]:
+                        message = DoubtMessage(
+                            upload_id=doubt_upload.id,
+                            author_role=msg_data["role"],
+                            text=msg_data["text"]
+                        )
+                        db.add(message)
+                        result["doubt_messages_created"] += 1
+
+                    print(f"  + Created doubt: {doubt_data['source']} ({len(doubt_data['messages'])} messages)")
+                else:
+                    print(f"  - Doubt already exists: {doubt_data['source']}")
+
+        # ============================================================
+        # CREATE CALL SESSIONS (5 entries)
+        # ============================================================
+        print("\nCreating call sessions...")
+        calls_data = [
+            {
+                "caller_number": "+1-555-0101",
+                "twilio_sid": f"CA{uuid.uuid4().hex[:32]}",
+                "language": "en",
+                "location": "California, USA",
+                "status": CallStatusEnum.COMPLETED,
+                "duration": "5:23"
+            },
+            {
+                "caller_number": "+1-555-0102",
+                "twilio_sid": f"CA{uuid.uuid4().hex[:32]}",
+                "language": "en",
+                "location": "New York, USA",
+                "status": CallStatusEnum.COMPLETED,
+                "duration": "3:45"
+            },
+            {
+                "caller_number": "+1-555-0103",
+                "twilio_sid": f"CA{uuid.uuid4().hex[:32]}",
+                "language": "en",
+                "location": "Texas, USA",
+                "status": CallStatusEnum.ACTIVE,
+                "duration": None
+            },
+            {
+                "caller_number": "+1-555-0104",
+                "twilio_sid": f"CA{uuid.uuid4().hex[:32]}",
+                "language": "en",
+                "location": "Florida, USA",
+                "status": CallStatusEnum.COMPLETED,
+                "duration": "8:12"
+            },
+            {
+                "caller_number": "+1-555-0105",
+                "twilio_sid": f"CA{uuid.uuid4().hex[:32]}",
+                "language": "en",
+                "location": "Washington, USA",
+                "status": CallStatusEnum.FAILED,
+                "duration": "0:15"
+            },
+        ]
+
+        for call_data in calls_data:
+            existing = db.query(Call).filter(Call.twilio_sid == call_data["twilio_sid"]).first()
+            if not existing:
+                call = Call(
+                    caller_number=call_data["caller_number"],
+                    twilio_sid=call_data["twilio_sid"],
+                    language=call_data["language"],
+                    location=call_data["location"],
+                    status=call_data["status"],
+                    duration=call_data["duration"],
+                    metadata_={"call_type": "student_query", "topic": "course_help"},
+                    created_at=datetime.now(timezone.utc) - timedelta(days=random.randint(1, 7))
+                )
+                db.add(call)
+                result["calls_created"] += 1
+                print(f"  + Created call session: {call_data['caller_number']} ({call_data['status'].value})")
+            else:
+                print(f"  - Call already exists: {call_data['twilio_sid']}")
+
+        # ============================================================
         # CREATE CHAT SESSIONS (10+ entries)
         # ============================================================
         print("\nCreating chat sessions...")
@@ -810,12 +1340,21 @@ def populate_database():
         print(f"  Users created:             {result['users_created']}")
         print(f"  Profiles created:          {result['profiles_created']}")
         print(f"  Courses created:           {result['courses_created']}")
+        print(f"  Tags created:              {result['tags_created']}")
+        print(f"  Announcements created:     {result['announcements_created']}")
+        print(f"  Resources created:         {result['resources_created']}")
         print(f"  Chat sessions created:     {result['chat_sessions_created']}")
         print(f"  Knowledge sources created: {result['knowledge_sources_created']}")
         print(f"  Knowledge chunks created:  {result['knowledge_chunks_created']}")
+        print(f"  Quizzes created:           {result['quizzes_created']}")
+        print(f"  Quiz attempts created:     {result['quiz_attempts_created']}")
+        print(f"  Slide decks created:       {result['slide_decks_created']}")
         print(f"  Tasks created:             {result['tasks_created']}")
         print(f"  Queries created:           {result['queries_created']}")
         print(f"  Query responses created:   {result['query_responses_created']}")
+        print(f"  Doubt uploads created:     {result['doubt_uploads_created']}")
+        print(f"  Doubt messages created:    {result['doubt_messages_created']}")
+        print(f"  Call sessions created:     {result['calls_created']}")
         print()
         print("=" * 60)
         print("TEST CREDENTIALS:")

@@ -9,8 +9,8 @@ Provides endpoints for:
 - Updating query status
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query as QueryParam
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, status as http_status, Query as QueryParam
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
 from typing import Optional, List
 from datetime import datetime
@@ -158,7 +158,7 @@ async def list_queries(
                 query = query.filter(Query.category == category_enum)
             except KeyError:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
                     detail=f"Invalid category: {category}. Valid values: TECHNICAL, CONCEPTUAL, ASSIGNMENT, EXAM, GENERAL, OTHER"
                 )
 
@@ -168,7 +168,7 @@ async def list_queries(
                 query = query.filter(Query.priority == priority_enum)
             except KeyError:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
                     detail=f"Invalid priority: {priority}. Valid values: LOW, MEDIUM, HIGH, URGENT"
                 )
 
@@ -189,7 +189,7 @@ async def list_queries(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch queries: {str(e)}"
         )
 
@@ -206,19 +206,19 @@ async def get_query(
 ):
     """Get specific query with responses."""
     try:
-        # Fetch query
-        query = db.query(Query).filter(Query.id == query_id).first()
+        # Fetch query with eager loading of responses
+        query = db.query(Query).options(joinedload(Query.responses)).filter(Query.id == query_id).first()
 
         if not query:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail=f"Query {query_id} not found"
             )
 
         # Check access permission
         if current_user.role.value == "student" and query.student_id != current_user.id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=http_status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to view this query"
             )
 
@@ -232,7 +232,7 @@ async def get_query(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch query: {str(e)}"
         )
 
@@ -241,7 +241,7 @@ async def get_query(
     "/",
     summary="Create new query",
     description="Create a new query/doubt. Only students can create queries.",
-    status_code=status.HTTP_201_CREATED
+    status_code=http_status.HTTP_201_CREATED
 )
 async def create_query(
     query_data: QueryCreate,
@@ -253,7 +253,7 @@ async def create_query(
         # Only students can create queries
         if current_user.role.value != "student":
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=http_status.HTTP_403_FORBIDDEN,
                 detail="Only students can create queries"
             )
 
@@ -282,7 +282,7 @@ async def create_query(
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create query: {str(e)}"
         )
 
@@ -291,7 +291,7 @@ async def create_query(
     "/{query_id}/response",
     summary="Add response to query",
     description="Add a response to a query. TAs/Instructors can mark responses as solutions.",
-    status_code=status.HTTP_201_CREATED
+    status_code=http_status.HTTP_201_CREATED
 )
 async def add_query_response(
     query_id: int,
@@ -306,7 +306,7 @@ async def add_query_response(
 
         if not query:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail=f"Query {query_id} not found"
             )
 
@@ -347,7 +347,7 @@ async def add_query_response(
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to add response: {str(e)}"
         )
 
@@ -368,7 +368,7 @@ async def update_query_status(
         # Only TAs/Instructors/Admins can update status
         if current_user.role.value not in ["ta", "instructor", "admin"]:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=http_status.HTTP_403_FORBIDDEN,
                 detail="Only TAs/Instructors/Admins can update query status"
             )
 
@@ -377,7 +377,7 @@ async def update_query_status(
 
         if not query:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail=f"Query {query_id} not found"
             )
 
@@ -402,7 +402,7 @@ async def update_query_status(
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update query status: {str(e)}"
         )
 
@@ -463,6 +463,6 @@ async def get_query_statistics(
 
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch statistics: {str(e)}"
         )

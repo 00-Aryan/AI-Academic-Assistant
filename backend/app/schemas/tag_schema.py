@@ -12,10 +12,9 @@ class UserSimpleResponse(BaseModel):
     id: int
     email: str
 
+    
     class Config:
-        orm_mode = True
-
-
+        from_attributes = True
 class TagBase(BaseModel):
     """Base schema for a tag."""
     name: str = Field(..., min_length=2, max_length=50, example="python")

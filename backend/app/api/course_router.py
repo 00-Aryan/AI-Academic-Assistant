@@ -44,6 +44,36 @@ def create_course(
     return db_course
 
 
+@router.get("/public", response_model=List[CourseResponse], summary="List all available courses (Public)")
+def get_all_courses_public(
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve a list of all available courses. Public endpoint for registration form.
+    Accessible without authentication.
+    """
+    courses = db.query(Course).order_by(Course.name).all()
+    return courses
+
+
+@router.get("/my-courses", response_model=List[CourseResponse], summary="Get current user's assigned courses")
+def get_my_courses(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_authenticated),
+):
+    """
+    Retrieve the list of courses assigned to the current user.
+    - For Students: Returns courses assigned by admin/instructor
+    - For TAs/Instructors: Returns courses selected during registration
+    """
+    courses = db.query(Course).join(
+        Course.assigned_users
+    ).filter(
+        Course.assigned_users.any(user_id=current_user.id)
+    ).order_by(Course.name).all()
+    return courses
+
+
 @router.get("/", response_model=List[CourseResponse], summary="List all available courses")
 def get_all_courses(
     db: Session = Depends(get_db),

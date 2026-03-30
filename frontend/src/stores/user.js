@@ -25,13 +25,14 @@ export const useUserStore = defineStore('user', {
     /**
      * Register a new user
      */
-    async register(email, password, role = 'student', fullName = '') {
+    async register(email, password, role = 'student', fullName = '', courseIds = []) {
       try {
         const data = await authAPI.register({
           email,
           password,
           role,
-          full_name: fullName
+          full_name: fullName,
+          course_ids: courseIds
         })
 
         this.setAuthData(data)

@@ -152,6 +152,7 @@ async def populate_database(db: Session = Depends(get_db)):
                     content=data["content"],
                     category=data["category"],
                     is_active=True,
+                    chunk_count=1,  # Set chunk_count since we're creating 1 chunk
                     created_at=datetime.utcnow()
                 )
                 db.add(source)
@@ -169,20 +170,17 @@ async def populate_database(db: Session = Depends(get_db)):
 
         # Create tasks
         tasks_data = [
-            {"name": "Generate student progress report", "description": "Weekly report generation", "task_type": TaskTypeEnum.REPORT_GENERATION, "status": TaskStatusEnum.COMPLETED},
-            {"name": "Process uploaded assignments", "description": "Batch processing", "task_type": TaskTypeEnum.DATA_PROCESSING, "status": TaskStatusEnum.IN_PROGRESS, "progress": 65},
-            {"name": "Backup database", "description": "Daily backup", "task_type": TaskTypeEnum.DATA_PROCESSING, "status": TaskStatusEnum.COMPLETED},
-            {"name": "Send email notifications", "description": "Weekly digest", "task_type": TaskTypeEnum.EMAIL, "status": TaskStatusEnum.PENDING},
-            {"name": "Index knowledge base", "description": "Update search indices", "task_type": TaskTypeEnum.DATA_PROCESSING, "status": TaskStatusEnum.FAILED, "error": "Connection timeout"}
+            {"task_type": TaskTypeEnum.REPORT_GENERATION.value, "status": TaskStatusEnum.COMPLETED.value},
+            {"task_type": TaskTypeEnum.DATA_PROCESSING.value, "status": TaskStatusEnum.IN_PROGRESS.value},
+            {"task_type": TaskTypeEnum.DATA_PROCESSING.value, "status": TaskStatusEnum.COMPLETED.value},
+            {"task_type": TaskTypeEnum.EMAIL.value, "status": TaskStatusEnum.PENDING.value},
+            {"task_type": TaskTypeEnum.DATA_PROCESSING.value, "status": TaskStatusEnum.FAILED.value, "error": "Connection timeout"}
         ]
 
         for data in tasks_data:
             task = Task(
-                name=data["name"],
-                description=data["description"],
                 task_type=data["task_type"],
                 status=data["status"],
-                progress=data.get("progress", 0),
                 error_message=data.get("error"),
                 created_at=datetime.utcnow() - timedelta(days=random.randint(0, 7))
             )

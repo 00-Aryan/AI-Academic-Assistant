@@ -26,6 +26,8 @@ except ImportError:
 
 from app.core.config import settings
 from app.services.chart_generator import chart_generator
+from app.services.content_optimizer import content_optimizer
+from app.services.graph_validator import graph_validator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -161,31 +163,92 @@ class SlideDeckService:
         if not self.llm:
             return {"error": "Slide deck service is not configured."}
 
-        content_length = "concise bullet points and short paragraphs" if format == "presentation" else "detailed explanations and longer content"
+        # Determine content length based on format and whether graphs are included
+        if format == "presentation":
+            regular_slide_words = "150-200"
+            graph_slide_words = "80-120"
+            content_style = "concise bullet points and short paragraphs"
+        else:
+            regular_slide_words = "300-400"
+            graph_slide_words = "200-250"
+            content_style = "detailed explanations and longer content"
 
         graph_instruction = ""
+        graph_emphasis = ""
         if include_graphs and graph_types:
             graph_instruction = f"""
-        - **Include Graphs:** For relevant slides, include graph_data with one of the types: {', '.join([gt.value for gt in graph_types])}.
-          Generate appropriate data for the graph based on the slide content.
+        - **Include Graphs:** For approximately 30-40% of content slides (excluding intro and summary), include `graph_data` with one of these types: {', '.join([gt.value for gt in graph_types])}.
+        - **Critical:** When a slide has `graph_data`, limit the body content to {graph_slide_words} words MAXIMUM.
+          The graph is the focal point - keep explanatory text brief and concise.
+          Use bullet points with 1-2 lines per point.
+        - Generate appropriate, meaningful data for the graph based on the slide content.
         """
+            graph_emphasis = f"""
+    **WORD COUNT ENFORCEMENT FOR GRAPH SLIDES:**
+    - If you add graph_data to a slide: the body content MUST be {graph_slide_words} words or less
+    - Count your words carefully
+    - Focus on key insights, let the visualization carry the message
+    - If content exceeds {graph_slide_words} words, remove the graph_data instead
+    """
 
         prompt_template = """
-        You are an expert instructional designer creating a slide deck for the university course "{course_name}".
+        You are an expert instructional designer creating a professional slide deck for the university course "{course_name}".
 
         **Requirements:**
         - **Topics to cover:** {topics}
         - **Total Number of Slides:** {num_slides}
         - **Description:** {description}
-        - **Format:** {format}
-        - **Content Length:** {content_length}
+        - **Format:** {format} ({content_style})
+        - **Course Level:** University-level, assume intermediate knowledge
         {graph_instruction}
 
-        **Instructions:**
-        1. Create a logical flow, starting with an introduction/agenda and ending with a summary.
-        2. For each slide, provide a clear `title` and `content` in Markdown.
-        3. The content should be informative and suitable for a university-level audience.
-        4. If graphs are included, add `graph_data` for appropriate slides.
+        **CRITICAL: Word Count Limits (strictly enforce these):**
+        - Regular content slides: {regular_slide_words} words (excluding title)
+        - Graph slides (with graph_data): {graph_slide_words} words MAXIMUM (excluding title)
+        {graph_emphasis}
+
+        **Instructions for Slide Creation:**
+        1. Create a logical flow starting with an introduction/agenda slide and ending with a summary/conclusion.
+        2. For each slide:
+           - Provide a clear, concise `title` (3-15 words)
+           - Write `content` in Markdown format using **bold**, *italic*, bullet points, and headers
+           - Use bullet points when listing concepts (• for bullets, not numbers unless showing sequence)
+        
+        3. Content Quality:
+           - Each bullet point should be 1-2 lines maximum
+           - Write for clarity and conciseness
+           - Suitable for university-level audience
+           - Bold key terms, use *italics* for emphasis
+        
+        4. Graph Placement Strategy:
+           - Identify slides with data, trends, comparisons, or metrics (keywords: data, analysis, performance, growth, distribution, metrics)
+           - For these slides, add `graph_data` with the appropriate chart type
+           - When adding graph_data: KEEP CONTENT UNDER {graph_slide_words} WORDS
+           - Title should clearly indicate what the graph shows
+        
+        5. Data for Graphs:
+           - Ensure data makes sense in context of the slide
+           - Use realistic values and ranges appropriate for the topic
+           - **IMPORTANT:** Use meaningful category names based on context, NEVER generic "Item 1, Item 2"
+           - Examples of meaningful labels:
+             • Financial slides: Use regions (North, South, East, West), products (Product A, Product B, Premium, Standard), quarters (Q1, Q2, Q3, Q4), or departments
+             • Performance slides: Use team names, categories (Frontend, Backend, DevOps), metrics (CPU, Memory, Disk)
+             • Demographic slides: Use age groups (18-25, 26-35, 36-45, 45+), regions, or segments
+             • Time series: Use months (Jan, Feb, Mar) or quarters (Q1, Q2, Q3, Q4) based on data span
+           - Make the graph tell a meaningful story
+        
+        6. Formatting:
+           - Use Markdown liberally for emphasis (bold key terms, headers for subsections)
+           - Use bullet points for lists (cleaner than numbered lists unless showing sequence)
+           - Keep paragraphs short (2-3 sentences maximum)
+           - Avoid walls of text
+
+        **Validation Before Output:**
+        - Word count check: Regular slides {regular_slide_words} words, graph slides {graph_slide_words} words
+        - All slides have titles
+        - Content is in Markdown format
+        - Graph slides have graph_data and brief explanations
+        - No slide is empty
 
         **Output Format:**
         You MUST provide the output as a single, valid JSON object that strictly follows this format. Do not include any other text or markdown.
@@ -194,7 +257,7 @@ class SlideDeckService:
 
         prompt = PromptTemplate(
             template=prompt_template,
-            input_variables=["course_name", "topics", "num_slides", "description", "format", "content_length", "graph_instruction"],
+            input_variables=["course_name", "topics", "num_slides", "description", "format", "content_style", "regular_slide_words", "graph_slide_words", "graph_instruction", "graph_emphasis"],
             partial_variables={"format_instructions": self.parser.get_format_instructions()}
         )
 
@@ -208,8 +271,11 @@ class SlideDeckService:
                 "num_slides": num_slides,
                 "description": description,
                 "format": format,
-                "content_length": content_length,
+                "content_style": content_style,
+                "regular_slide_words": regular_slide_words,
+                "graph_slide_words": graph_slide_words,
                 "graph_instruction": graph_instruction,
+                "graph_emphasis": graph_emphasis,
             })
             
             # Post-process: Add charts to appropriate slides
@@ -220,6 +286,19 @@ class SlideDeckService:
                     graph_types, 
                     course_name
                 )
+            
+            # NEW: Enforce content limits and collect metrics
+            if "slides" in deck_data:
+                logger.info("Applying content optimization and metrics...")
+                deck_data["slides"] = content_optimizer.enhance_content_with_metrics(
+                    deck_data["slides"],
+                    has_graphs=include_graphs
+                )
+                
+                # Log content statistics
+                summary = content_optimizer.generate_content_summary(deck_data["slides"])
+                logger.info(f"Content Summary: {summary}")
+                logger.info(f"Slides within word limits: {summary['slides_within_limit']}/{summary['total_slides']}")
             
             logger.info("Successfully generated slide deck content.")
             return deck_data
@@ -273,48 +352,88 @@ class SlideDeckService:
             # Choose chart type (cycle through available types)
             chart_type = graph_types[slide_idx % len(graph_types)].value
             
-            # Generate synthetic data
-            labels, values = chart_generator.generate_synthetic_data(
-                slide_title=slide_title,
-                chart_type=chart_type,
-                slide_index=slide_idx
-            )
-            
-            # Generate chart image
-            chart_title = f"{slide_title} - Visualization"
-            graph_image = chart_generator.generate_chart_image(
-                chart_type=chart_type,
-                title=chart_title,
-                labels=labels,
-                values=values,
-                slide_title=slide_title,
-                slide_index=slide_idx
-            )
-            
-            if graph_image:
-                # Add both graph_image (for rendering) and graph_data (for metadata)
-                slide['graph_image'] = graph_image
+            try:
+                # Generate synthetic data
+                labels, values = chart_generator.generate_synthetic_data(
+                    slide_title=slide_title,
+                    chart_type=chart_type,
+                    slide_index=slide_idx
+                )
                 
-                # Format graph_data for compatibility
-                if chart_type == "scatter" and values and isinstance(values[0], (list, tuple)):
-                    # For scatter, extract x and y separately
-                    x_vals, y_vals = zip(*values)
-                    datasets = [
-                        {"label": "Data Points", "data": list(y_vals)}
-                    ]
-                    labels_list = [f"Point {i+1}" for i in range(len(x_vals))]
+                # Generate axis metadata
+                axis_metadata = chart_generator.generate_axis_metadata(
+                    slide_title=slide_title,
+                    chart_type=chart_type,
+                    labels=labels,
+                    values=values
+                )
+                
+                # Validate graph before rendering
+                validation_result = graph_validator.validate_graph(
+                    chart_type=chart_type,
+                    labels=labels,
+                    values=values,
+                    axis_metadata=axis_metadata,
+                    slide_title=slide_title
+                )
+                
+                # Log validation results
+                if not validation_result['is_valid']:
+                    logger.warning(f"Graph validation failed for slide {slide_idx} '{slide_title}': {validation_result['errors']}")
+                if validation_result['warnings']:
+                    logger.info(f"Graph validation warnings for slide {slide_idx} '{slide_title}': {validation_result['warnings']}")
+                
+                # Generate chart image with axis metadata
+                chart_title = f"{slide_title} - Visualization"
+                graph_image = chart_generator.generate_chart_image(
+                    chart_type=chart_type,
+                    title=chart_title,
+                    labels=labels,
+                    values=values,
+                    slide_title=slide_title,
+                    slide_index=slide_idx,
+                    axis_metadata=axis_metadata
+                )
+                
+                if graph_image:
+                    # Add both graph_image (for rendering) and graph_data (for metadata)
+                    slide['graph_image'] = graph_image
+                    
+                    # Format graph_data for compatibility
+                    if chart_type == "scatter" and values and isinstance(values[0], (list, tuple)):
+                        # For scatter, extract x and y separately
+                        x_vals, y_vals = zip(*values)
+                        datasets = [
+                            {"label": "Data Points", "data": list(y_vals)}
+                        ]
+                        labels_list = [f"Point {i+1}" for i in range(len(x_vals))]
+                    else:
+                        datasets = [{"label": "Values", "data": values}]
+                        labels_list = labels
+                    
+                    # Include axis metadata and validation in graph_data
+                    slide['graph_data'] = {
+                        "type": chart_type,
+                        "title": chart_title,
+                        "labels": labels_list,
+                        "datasets": datasets,
+                        "x_axis": axis_metadata.get('x_axis'),
+                        "y_axis": axis_metadata.get('y_axis'),
+                        "data_description": axis_metadata.get('data_description'),
+                        "data_source": axis_metadata.get('data_source'),
+                        "validation": {
+                            "is_valid": validation_result['is_valid'],
+                            "warnings": validation_result['warnings']
+                        }
+                    }
+                    
+                    logger.info(f"Successfully added {chart_type} chart to slide {slide_idx}: {slide_title} (validation: {'PASSED' if validation_result['is_valid'] else 'FAILED WITH WARNINGS'})")
                 else:
-                    datasets = [{"label": "Values", "data": values}]
-                    labels_list = labels
-                
-                slide['graph_data'] = {
-                    "type": chart_type,
-                    "title": chart_title,
-                    "labels": labels_list,
-                    "datasets": datasets
-                }
-                
-                logger.info(f"Added {chart_type} chart to slide: {slide_title}")
+                    logger.warning(f"Chart generation returned None for slide {slide_idx}: {slide_title}. Skipping chart for this slide.")
+            
+            except Exception as chart_error:
+                logger.error(f"Error generating chart for slide {slide_idx} '{slide_title}': {chart_error}. Continuing without chart for this slide.")
+                # Continue without adding a chart for this slide
         
         return slides
 

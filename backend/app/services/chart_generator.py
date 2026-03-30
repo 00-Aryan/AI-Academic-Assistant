@@ -6,7 +6,7 @@ Generates deterministic, context-aware chart images for slide decks.
 import io
 import base64
 import logging
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 import re
 
 try:
@@ -20,6 +20,8 @@ except ImportError:
     plt = None
     np = None
 
+from app.services.chart_data_service import chart_data_service
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,6 +32,94 @@ class ChartGenerator:
         if not MATPLOTLIB_AVAILABLE:
             logger.warning("Matplotlib not available. Chart generation disabled.")
     
+    def generate_axis_metadata(self, slide_title: str, chart_type: str, labels: List[str], values: List) -> Dict[str, Any]:
+        """
+        Generate meaningful axis metadata based on slide context.
+        
+        Args:
+            slide_title: Title of the slide for context detection
+            chart_type: Type of chart (bar, line, pie, scatter)
+            labels: Data labels
+            values: Data values
+        
+        Returns:
+            Dictionary with x_axis, y_axis, data_description, and data_source metadata
+        """
+        title_lower = slide_title.lower()
+        
+        # Detect context keywords
+        is_financial = any(kw in title_lower for kw in ['revenue', 'profit', 'cost', 'price', 'sales', 'financial', 'budget', 'income'])
+        is_performance = any(kw in title_lower for kw in ['performance', 'efficiency', 'productivity', 'score', 'rating', 'kpi'])
+        is_growth = any(kw in title_lower for kw in ['growth', 'increase', 'trend', 'progress'])
+        is_time_series = any(kw in title_lower for kw in ['quarter', 'month', 'year', 'week', 'time', 'timeline'])
+        is_demographic = any(kw in title_lower for kw in ['age', 'population', 'demographic', 'people', 'users', 'customers'])
+        is_geographic = any(kw in title_lower for kw in ['region', 'location', 'country', 'city', 'area', 'zone'])
+        is_percentage = any(kw in title_lower for kw in ['percentage', 'rate', 'ratio', 'share', 'proportion'])
+        
+        # Initialize metadata
+        x_axis = {"label": "Categories", "unit": None}
+        y_axis = {"label": "Values", "unit": None}
+        data_description = "Synthetic data generated for visualization"
+        
+        # Determine X-axis metadata
+        if chart_type == "pie":
+            x_axis = None  # Pie charts don't have traditional axes
+            y_axis = None
+            data_description = f"Distribution breakdown showing relative proportions"
+        elif is_time_series or any(label in ['Q1', 'Q2', 'Q3', 'Q4'] for label in labels[:4]):
+            if 'quarter' in title_lower or any(label.startswith('Q') for label in labels[:4]):
+                x_axis = {"label": "Quarter", "unit": None}
+            elif any(month in labels[0] if labels else '' for month in ['Jan', 'Feb', 'Mar']):
+                x_axis = {"label": "Month", "unit": None}
+            elif 'week' in str(labels[0]).lower() if labels else False:
+                x_axis = {"label": "Week", "unit": None}
+            else:
+                x_axis = {"label": "Time Period", "unit": None}
+        elif is_geographic:
+            x_axis = {"label": "Region", "unit": None}
+        elif 'product' in title_lower:
+            x_axis = {"label": "Product", "unit": None}
+        elif 'category' in title_lower or 'segment' in title_lower:
+            x_axis = {"label": "Category", "unit": None}
+        
+        # Determine Y-axis metadata and data range
+        if chart_type != "pie":
+            if is_financial:
+                y_axis = {"label": "Amount", "unit": "$"}
+                data_description = "Financial metrics showing monetary values"
+            elif is_percentage:
+                y_axis = {"label": "Percentage", "unit": "%"}
+                data_description = "Percentage distribution or rates"
+            elif is_performance:
+                y_axis = {"label": "Score", "unit": "points"}
+                data_description = "Performance metrics or ratings"
+            elif is_demographic:
+                y_axis = {"label": "Count", "unit": "people"}
+                data_description = "Demographic data showing population counts"
+            elif is_growth:
+                y_axis = {"label": "Growth Rate", "unit": "%"}
+                data_description = "Growth trends over time"
+            else:
+                y_axis = {"label": "Value", "unit": None}
+            
+            # Calculate min/max from values
+            if chart_type == "scatter" and values and isinstance(values[0], (list, tuple)):
+                x_vals, y_vals = zip(*values)
+                x_axis["min_value"] = float(min(x_vals))
+                x_axis["max_value"] = float(max(x_vals))
+                y_axis["min_value"] = float(min(y_vals))
+                y_axis["max_value"] = float(max(y_vals))
+            elif values and all(isinstance(v, (int, float)) for v in values):
+                y_axis["min_value"] = float(min(values))
+                y_axis["max_value"] = float(max(values))
+        
+        return {
+            "x_axis": x_axis,
+            "y_axis": y_axis,
+            "data_description": data_description,
+            "data_source": "Context-aware synthetic data generation"
+        }
+    
     def generate_synthetic_data(
         self, 
         slide_title: str, 
@@ -39,6 +129,8 @@ class ChartGenerator:
     ) -> Tuple[List[str], List[float]]:
         """
         Generate contextual synthetic data based on slide title and chart type.
+        Tries to use realistic sample data from chart_data_service first.
+        Falls back to generated data if not available.
         
         Args:
             slide_title: Title of the slide (used for context)
@@ -49,6 +141,38 @@ class ChartGenerator:
         Returns:
             Tuple of (labels, values)
         """
+        try:
+            # Try to get sample data based on context
+            labels, values, metadata = chart_data_service.get_chart_data_for_context(
+                slide_title=slide_title,
+                chart_type=chart_type,
+                slide_index=slide_index
+            )
+            
+            # If sample data has fewer points than requested, use it as-is
+            # Otherwise generate synthetic if more points needed
+            if num_points and len(labels) < num_points:
+                # Generate additional data matching the pattern
+                logger.info(f"Sample data has {len(labels)} points, but {num_points} requested. Augmenting...")
+                # For now, just return what we have
+                pass
+            
+            logger.info(f"Using sample data for '{slide_title}': {len(labels)} points, type={chart_type}")
+            return labels, values
+        
+        except Exception as e:
+            logger.warning(f"Could not load sample data for '{slide_title}': {e}. Generating synthetic data...")
+            # Fall back to generated data
+            return self._generate_synthetic_data_fallback(slide_title, chart_type, slide_index, num_points)
+    
+    def _generate_synthetic_data_fallback(
+        self,
+        slide_title: str,
+        chart_type: str,
+        slide_index: int,
+        num_points: Optional[int] = None
+    ) -> Tuple[List[str], List[float]]:
+        """Fallback method for generating synthetic data when sample data unavailable."""
         # Create deterministic seed from title and index
         seed = abs(hash(slide_title)) % 10000 + slide_index * 100
         np.random.seed(seed)
@@ -135,19 +259,67 @@ class ChartGenerator:
         return labels, values
     
     def _generate_category_labels(self, n: int, context: str = "") -> List[str]:
-        """Generate contextual category labels."""
-        if 'quarter' in context or 'q1' in context:
+        """Generate contextual category labels based on context."""
+        context_lower = context.lower()
+        
+        # Financial context
+        if any(kw in context_lower for kw in ['revenue', 'profit', 'cost', 'sales', 'financial', 'budget']):
+            if 'quarter' in context_lower:
+                return [f"Q{i+1}" for i in range(min(n, 4))]
+            elif 'product' in context_lower:
+                return ["Premium", "Standard", "Basic", "Enterprise", "Professional", "Starter"][:n]
+            elif 'region' in context_lower:
+                return ["North", "South", "East", "West", "Central", "Northeast"][:n]
+            elif 'department' in context_lower:
+                return ["Sales", "Marketing", "Engineering", "Operations", "Support", "HR"][:n]
+            else:
+                return ["Product A", "Product B", "Product C", "Product D", "Product E", "Product F"][:n]
+        
+        # Performance context
+        elif any(kw in context_lower for kw in ['performance', 'efficiency', 'productivity', 'score', 'rating', 'kpi']):
+            if 'team' in context_lower:
+                return ["Team A", "Team B", "Team C", "Team D", "Team E", "Team F"][:n]
+            elif 'component' in context_lower or 'service' in context_lower:
+                return ["API", "Frontend", "Backend", "Database", "Cache", "Queue"][:n]
+            elif 'metric' in context_lower:
+                return ["CPU", "Memory", "Disk", "Network", "Latency", "Throughput"][:n]
+            else:
+                return ["Category A", "Category B", "Category C", "Category D", "Category E", "Category F"][:n]
+        
+        # Demographic context
+        elif any(kw in context_lower for kw in ['age', 'population', 'demographic', 'people', 'users', 'customers']):
+            if 'age' in context_lower:
+                return ["18-25", "26-35", "36-45", "46-55", "56-65", "65+"][:n]
+            elif 'segment' in context_lower:
+                return ["Premium", "Standard", "Basic", "Free", "Enterprise", "SMB"][:n]
+            elif 'region' in context_lower:
+                return ["North", "South", "East", "West", "Central", "Coastal"][:n]
+            else:
+                return ["Segment A", "Segment B", "Segment C", "Segment D", "Segment E", "Segment F"][:n]
+        
+        # Time/Quarter context
+        elif 'quarter' in context_lower or 'q1' in context_lower:
             return [f"Q{i+1}" for i in range(min(n, 4))]
-        elif 'month' in context:
+        
+        # Month context
+        elif 'month' in context_lower:
             months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
             return months[:n]
-        elif 'product' in context or 'item' in context:
+        
+        # Product context
+        elif 'product' in context_lower or 'item' in context_lower:
             return [f"Product {chr(65+i)}" for i in range(n)]
-        elif 'category' in context or 'segment' in context:
+        
+        # Category context
+        elif 'category' in context_lower or 'segment' in context_lower:
             return [f"Category {chr(65+i)}" for i in range(n)]
-        elif 'region' in context or 'location' in context:
+        
+        # Region context
+        elif 'region' in context_lower or 'location' in context_lower:
             regions = ["North", "South", "East", "West", "Central", "Northeast", "Southeast", "Northwest"]
             return regions[:n]
+        
+        # Default: Use generic but numbered labels (fallback)
         else:
             return [f"Item {i+1}" for i in range(n)]
     
@@ -174,7 +346,8 @@ class ChartGenerator:
         labels: List[str],
         values: List,
         slide_title: str = "",
-        slide_index: int = 0
+        slide_index: int = 0,
+        axis_metadata: Optional[Dict[str, Any]] = None
     ) -> Optional[str]:
         """
         Generate a chart image and return as base64 Data URI.
@@ -186,6 +359,7 @@ class ChartGenerator:
             values: Data values
             slide_title: Slide title for context
             slide_index: Slide index
+            axis_metadata: Optional axis metadata with x_axis, y_axis information
         
         Returns:
             Base64 Data URI string or None if generation fails
@@ -195,32 +369,66 @@ class ChartGenerator:
             return None
         
         try:
+            # Generate axis metadata if not provided
+            if not axis_metadata:
+                axis_metadata = self.generate_axis_metadata(slide_title, chart_type, labels, values)
+            
             # Create figure with appropriate size
             fig, ax = plt.subplots(figsize=(8, 5), dpi=100)
             
             # Truncate labels
             truncated_labels = [self._truncate_label(str(l)) for l in labels]
             
+            # Extract axis info
+            x_axis = axis_metadata.get('x_axis', {})
+            y_axis = axis_metadata.get('y_axis', {})
+            
             if chart_type == "bar":
-                bars = ax.bar(truncated_labels, values, color='#4F46E5', alpha=0.8, edgecolor='white')
-                ax.set_ylabel('Values', fontsize=10)
+                bars = ax.bar(truncated_labels, values, color='#4F46E5', alpha=0.8, edgecolor='white', linewidth=1.5)
+                
+                # Set Y-axis label with unit
+                y_label = y_axis.get('label', 'Values') if y_axis else 'Values'
+                y_unit = y_axis.get('unit') if y_axis else None
+                if y_unit:
+                    ax.set_ylabel(f'{y_label} ({y_unit})', fontsize=11, fontweight='bold')
+                else:
+                    ax.set_ylabel(y_label, fontsize=11, fontweight='bold')
+                
+                # Set X-axis label
+                x_label = x_axis.get('label', '') if x_axis else ''
+                if x_label:
+                    ax.set_xlabel(x_label, fontsize=11, fontweight='bold')
+                
                 # Rotate x-labels if many categories
                 if len(labels) > 6:
                     plt.xticks(rotation=30, ha='right', fontsize=9)
                 else:
                     plt.xticks(fontsize=9)
-                ax.grid(axis='y', alpha=0.3)
+                ax.grid(axis='y', alpha=0.3, linestyle='--', linewidth=0.7)
             
             elif chart_type == "line":
                 ax.plot(truncated_labels, values, marker='o', linewidth=2.5, 
-                       color='#4F46E5', markersize=6, markerfacecolor='white', 
-                       markeredgewidth=2, markeredgecolor='#4F46E5')
-                ax.set_ylabel('Values', fontsize=10)
+                       color='#4F46E5', markersize=7, markerfacecolor='white', 
+                       markeredgewidth=2.5, markeredgecolor='#4F46E5')
+                
+                # Set Y-axis label with unit
+                y_label = y_axis.get('label', 'Values') if y_axis else 'Values'
+                y_unit = y_axis.get('unit') if y_axis else None
+                if y_unit:
+                    ax.set_ylabel(f'{y_label} ({y_unit})', fontsize=11, fontweight='bold')
+                else:
+                    ax.set_ylabel(y_label, fontsize=11, fontweight='bold')
+                
+                # Set X-axis label
+                x_label = x_axis.get('label', '') if x_axis else ''
+                if x_label:
+                    ax.set_xlabel(x_label, fontsize=11, fontweight='bold')
+                
                 if len(labels) > 8:
                     plt.xticks(rotation=30, ha='right', fontsize=9)
                 else:
                     plt.xticks(fontsize=9)
-                ax.grid(alpha=0.3)
+                ax.grid(alpha=0.3, linestyle='--', linewidth=0.7)
             
             elif chart_type == "pie":
                 colors = plt.cm.Set3(np.linspace(0, 1, len(values)))
@@ -242,10 +450,25 @@ class ChartGenerator:
                 # Values are list of (x, y) tuples
                 if values and isinstance(values[0], (list, tuple)):
                     x_vals, y_vals = zip(*values)
-                    ax.scatter(x_vals, y_vals, s=50, alpha=0.6, color='#4F46E5', edgecolors='white')
-                    ax.set_xlabel('X Values', fontsize=10)
-                    ax.set_ylabel('Y Values', fontsize=10)
-                    ax.grid(alpha=0.3)
+                    ax.scatter(x_vals, y_vals, s=60, alpha=0.6, color='#4F46E5', edgecolors='white', linewidth=1.5)
+                    
+                    # Set X-axis label with unit
+                    x_label = x_axis.get('label', 'X Values') if x_axis else 'X Values'
+                    x_unit = x_axis.get('unit') if x_axis else None
+                    if x_unit:
+                        ax.set_xlabel(f'{x_label} ({x_unit})', fontsize=11, fontweight='bold')
+                    else:
+                        ax.set_xlabel(x_label, fontsize=11, fontweight='bold')
+                    
+                    # Set Y-axis label with unit
+                    y_label = y_axis.get('label', 'Y Values') if y_axis else 'Y Values'
+                    y_unit = y_axis.get('unit') if y_axis else None
+                    if y_unit:
+                        ax.set_ylabel(f'{y_label} ({y_unit})', fontsize=11, fontweight='bold')
+                    else:
+                        ax.set_ylabel(y_label, fontsize=11, fontweight='bold')
+                    
+                    ax.grid(alpha=0.3, linestyle='--', linewidth=0.7)
             
             # Set title
             ax.set_title(title, fontsize=12, fontweight='bold', pad=15)

@@ -44,7 +44,6 @@ class CallResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        orm_mode = True
 
 
 class CallSpeechProcessRequest(BaseModel):
